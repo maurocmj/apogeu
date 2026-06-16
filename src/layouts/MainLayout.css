@@ -29,8 +29,9 @@
 }
 
 .navbar-logo {
-  height: 32px;
+  height: 60px;
   width: auto;
+  transform: scale(1.4); /* Opcional: Se a imagem tiver muito espaço em branco transparente, o scale "cresce" a logo visualmente sem estourar o layout */
 }
 
 .navbar-nav {
