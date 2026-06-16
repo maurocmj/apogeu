@@ -65,11 +65,20 @@ const ChatWidget = ({
         <h3>{agentName}</h3>
       </div>
       
-      <div className="chat-messages">
+      <div className="chat-messages" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {messages.map((msg, idx) => (
           <div key={idx} className={`chat-message ${msg.role}`}>
-            <div className="message-bubble">
-              {msg.text}
+            <div className="message-bubble" style={{ lineHeight: '1.5' }}>
+              {msg.text && typeof msg.text === 'string' ? msg.text.split('\n').map((line, i) => (
+                <span key={i} style={{ display: 'block', marginBottom: line.trim() === '' ? '8px' : '4px' }}>
+                  {line.split(/(\*\*.*?\*\*)/g).map((part, j) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                      return <strong key={j} style={{ fontWeight: '700', color: msg.role === 'user' ? 'white' : 'var(--text-main)' }}>{part.slice(2, -2)}</strong>;
+                    }
+                    return <span key={j}>{part}</span>;
+                  })}
+                </span>
+              )) : msg.text}
             </div>
           </div>
         ))}

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import ChatWidget from '../components/ChatWidget';
 import ActionPlanCard from '../components/ActionPlanCard';
 import HealthRadarChart from '../components/HealthRadarChart';
+import HealthScoreTimelineChart from '../components/HealthScoreTimelineChart';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
@@ -213,67 +214,90 @@ const Exams = () => {
   const examContext = exams.map(e => `Exame: ${e.exam_type} (Data: ${new Date(e.collection_date).toLocaleDateString('pt-BR')}). Biomarcadores: ${JSON.stringify(e.biomarkers)}`).join('\n\n');
 
   return (
-    <div className="home-container" style={{ padding: 0, gridTemplateColumns: '450px 1fr', alignItems: 'start' }}>
-      {/* Main Column */}
-      <main className="home-main-col" style={{ marginTop: '24px' }}>
-        
-        {/* Radar e Visão Geral */}
-        <div className="feed-card glass" style={{ marginBottom: '24px' }}>
-          <div className="feed-header">
+    <div className="home-container" style={{ padding: 0, gridTemplateColumns: '450px 1fr', alignItems: 'stretch', marginTop: '24px' }}>
+      {/* Main Column: Radar e Visão Geral */}
+      <main className="home-main-col feed-card glass" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingBottom: '20px' }}>
+        <div>
+          <div className="feed-header" style={{ marginBottom: '16px' }}>
             <h3>Visão Geral Clínica</h3>
             <span className="badge">Atualizado {lastExamDate !== 'N/A' ? lastExamDate : 'hoje'}</span>
           </div>
-          <div className="radar-chart-wrapper" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <div className="radar-chart-wrapper" style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '16px' }}>
             <div style={{ width: '100%', maxWidth: '320px' }}>
-              <HealthRadarChart />
+              <HealthRadarChart exams={exams} />
             </div>
           </div>
         </div>
 
-        {/* Resumo Clínico */}
-        <div style={{ marginBottom: '32px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px', marginTop: 0, color: 'var(--text-muted)' }}>Resumo de Dados</h3>
+        {/* Resumo de Dados Integrado */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(3, 1fr)', 
+          gap: '12px', 
+          borderTop: '1px solid rgba(255, 255, 255, 0.05)', 
+          paddingTop: '16px'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '8px', borderLeft: '2px solid rgba(0, 229, 255, 0.5)' }}>
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Checkup</span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>{lastExamDate}</span>
+          </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '12px', borderLeft: '2px solid rgba(0, 229, 255, 0.5)' }}>
-              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Último Checkup</span>
-              <span style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>{lastExamDate}</span>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '12px', borderLeft: '2px solid rgba(16, 185, 129, 0.5)' }}>
-              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Indicadores</span>
-              <span style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>{totalBiomarkers} analisados</span>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '12px', borderLeft: '2px solid rgba(245, 158, 11, 0.5)' }}>
-              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Atenção</span>
-              <span style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>Risco Metabólico</span>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '8px', borderLeft: '2px solid rgba(16, 185, 129, 0.5)' }}>
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Indicadores</span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>{totalBiomarkers}</span>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '8px', borderLeft: '2px solid rgba(245, 158, 11, 0.5)' }}>
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Atenção</span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title="Risco Metabólico">Metabólico</span>
           </div>
         </div>
-
-
       </main>
 
-      {/* Right Column: AI Chat & Plan */}
-      <aside className="home-right-col" style={{ marginTop: '24px' }}>
-        <ChatWidget 
-          agentName="Medical Agent" 
-          icon={Heart} 
-          agentColor="#ef4444" 
-          initialMessage={initialMessage} 
-          context={examContext}
-        />
-
-        {actionPlanItems.length > 0 && (
-          <ActionPlanCard 
-            title="Protocolo Clínico"
-            icon={Target}
-            color="#ef4444"
-            items={actionPlanItems}
-          />
-        )}
+      {/* Right Column: Timeline Score Chart */}
+      <aside className="home-right-col feed-card glass" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div className="feed-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Histórico de Score Clínico</h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>Score Geral unificado & Sistemas</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <span className="badge" style={{ background: 'rgba(0, 229, 255, 0.12)', color: 'var(--primary)', border: '1px solid rgba(0, 229, 255, 0.25)', fontWeight: '700', fontSize: '12px', padding: '6px 12px', borderRadius: '8px' }}>
+              Geral: 90%
+            </span>
+          </div>
+        </div>
+        <HealthScoreTimelineChart />
       </aside>
+
+      {/* Protocolo Clínico & Medical Agent Chat (Side-by-side below) */}
+      <section style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginTop: '24px', marginBottom: '8px' }}>
+        <div>
+          {actionPlanItems.length > 0 ? (
+            <ActionPlanCard 
+              title="Protocolo Clínico"
+              icon={Target}
+              color="#10b981"
+              items={actionPlanItems}
+            />
+          ) : (
+            <div className="glass" style={{ padding: '24px', borderRadius: '12px', height: '100%', minHeight: '320px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+              <Target size={40} color="var(--text-muted)" style={{ marginBottom: '12px', opacity: 0.5 }} />
+              <strong style={{ color: 'white', display: 'block', marginBottom: '8px' }}>Nenhum Protocolo Ativo</strong>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0, maxWidth: '280px' }}>Envie um laudo de exame na tabela abaixo para que a I.A. gere o seu plano de ação clínico.</p>
+            </div>
+          )}
+        </div>
+        <div>
+          <ChatWidget 
+            agentName="Medical Agent" 
+            icon={Heart} 
+            agentColor="#10b981" 
+            initialMessage={initialMessage} 
+            context={examContext}
+          />
+        </div>
+      </section>
 
       {/* Tabela de Linha do Tempo Clínica */}
       <section style={{ gridColumn: '1 / -1', marginTop: '16px', marginBottom: '32px' }}>
@@ -369,9 +393,18 @@ const Exams = () => {
                         <td colSpan={5} style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                           {exam.ai_insights && exam.ai_insights.chat_message && (
                             <div style={{ padding: '16px', background: 'rgba(245, 158, 11, 0.05)', borderLeft: '4px solid #f59e0b', borderRadius: '4px', marginBottom: '16px' }}>
-                              <p style={{ color: 'white', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>
-                                {exam.ai_insights.chat_message}
-                              </p>
+                              <div style={{ color: 'white', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+                                {exam.ai_insights.chat_message.split('\n').map((line, i) => (
+                                  <span key={i} style={{ display: 'block', marginBottom: line.trim() === '' ? '8px' : '4px' }}>
+                                    {line.split(/(\*\*.*?\*\*)/g).map((part, j) => {
+                                      if (part.startsWith('**') && part.endsWith('**')) {
+                                        return <strong key={j} style={{ color: 'white', fontWeight: '700' }}>{part.slice(2, -2)}</strong>;
+                                      }
+                                      return <span key={j} style={{ color: 'var(--text-muted)' }}>{part}</span>;
+                                    })}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           )}
                           
