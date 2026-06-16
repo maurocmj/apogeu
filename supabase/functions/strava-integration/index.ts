@@ -23,27 +23,38 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Instancia o cliente com o token do usuário para validação e respeito ao RLS
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Instancia o cliente admin para operações de bastidores
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized user" }), {
+    const token = authHeader.replace("Bearer ", "");
+    let userId: string;
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        throw new Error("Invalid JWT format");
+      }
+      const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payloadJson = atob(payloadBase64);
+      const payload = JSON.parse(payloadJson);
+      
+      if (payload.role !== 'authenticated' && payload.role !== 'service_role') {
+        throw new Error("Unauthorized role");
+      }
+      
+      userId = payload.sub;
+      if (!userId) {
+        throw new Error("Missing subject (user ID) in JWT");
+      }
+    } catch (jwtErr) {
+      console.error("JWT Decode Error:", jwtErr.message);
+      return new Response(JSON.stringify({ error: "Unauthorized user", details: jwtErr.message }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    const userId = user.id;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Instancia o cliente admin para operações de bastidores
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, ""); // Remove barras finais
 

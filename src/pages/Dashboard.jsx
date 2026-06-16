@@ -15,7 +15,6 @@ const Dashboard = () => {
             <UserIcon size={32} color="#00e5ff" />
           </div>
           <h2>Mauro Moraes Jr.</h2>
-          <p className="profile-subtitle">Atleta APOGEU</p>
           
           <div className="profile-stats">
             <div className="stat-box">

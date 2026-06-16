@@ -26,6 +26,29 @@ const StravaCallback = () => {
       }
 
       try {
+        setStatus('Restaurando sessão...');
+        
+        // Espera a sessão ser restaurada (evita o race condition de carregar antes do login do Supabase inicializar)
+        let session = null;
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        session = currentSession;
+        
+        if (!session) {
+          // Tenta carregar por até 3 segundos
+          for (let i = 0; i < 15; i++) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            const { data: { session: checkSession } } = await supabase.auth.getSession();
+            if (checkSession) {
+              session = checkSession;
+              break;
+            }
+          }
+        }
+
+        if (!session) {
+          throw new Error('Usuário não autenticado. Por favor, faça login no Holos antes de prosseguir.');
+        }
+
         setStatus('Trocando tokens com segurança...');
         
         // Chamada para a Supabase Edge Function
