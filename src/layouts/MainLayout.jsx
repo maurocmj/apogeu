@@ -60,9 +60,10 @@ const MainLayout = () => {
         <div className="navbar-brand">
           <img 
             src={logo} 
-            alt="Quantum Logo" 
+            alt="Apogeu Logo" 
             className="navbar-logo"
           />
+          <span className="brand-text">Apogeu</span>
         </div>
 
         <nav className="navbar-nav">

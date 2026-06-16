@@ -48,11 +48,25 @@ Deno.serve(async (req) => {
     const path = url.pathname.replace(/\/+$/, ""); // Remove barras finais
 
     // Chaves secretas do Strava
-    const stravaClientId = Deno.env.get("STRAVA_CLIENT_ID");
-    const stravaClientSecret = Deno.env.get("STRAVA_CLIENT_SECRET");
+    let stravaClientId = Deno.env.get("STRAVA_CLIENT_ID");
+    let stravaClientSecret = Deno.env.get("STRAVA_CLIENT_SECRET");
 
     if (!stravaClientId || !stravaClientSecret) {
-      return new Response(JSON.stringify({ error: "Strava Client ID or Secret not configured in Supabase environment" }), {
+      console.log("Buscando credenciais do Strava na tabela strava_config...");
+      const { data: configData, error: configError } = await supabaseAdmin
+        .from('strava_config')
+        .select('key, value');
+      
+      if (!configError && configData) {
+        const idObj = configData.find((d) => d.key === 'STRAVA_CLIENT_ID');
+        const secretObj = configData.find((d) => d.key === 'STRAVA_CLIENT_SECRET');
+        if (idObj) stravaClientId = idObj.value;
+        if (secretObj) stravaClientSecret = secretObj.value;
+      }
+    }
+
+    if (!stravaClientId || !stravaClientSecret) {
+      return new Response(JSON.stringify({ error: "Strava Client ID or Secret not configured in environment or database" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });

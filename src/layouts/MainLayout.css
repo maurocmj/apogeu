@@ -25,13 +25,21 @@
 .navbar-brand {
   display: flex;
   align-items: center;
+  gap: 12px;
   min-width: 150px;
 }
 
 .navbar-logo {
-  height: 60px;
+  height: 40px;
   width: auto;
-  transform: scale(1.4); /* Opcional: Se a imagem tiver muito espaço em branco transparente, o scale "cresce" a logo visualmente sem estourar o layout */
+}
+
+.brand-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 1px;
 }
 
 .navbar-nav {
