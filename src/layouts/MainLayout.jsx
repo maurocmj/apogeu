@@ -38,15 +38,15 @@ const MainLayout = () => {
   }, []);
 
   const menuItems = [
-    { path: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Início' },
-    { path: '/esportivo', icon: <Dumbbell size={20} />, label: 'Esportivo' },
-    { path: '/monitoramento', icon: <Moon size={20} />, label: 'Monitoramento' },
-    { path: '/ingestao', icon: <Utensils size={20} />, label: 'Ingestão' },
-    { path: '/body', icon: <User size={20} />, label: 'Body' },
-    { path: '/perfil', icon: <Target size={20} />, label: 'Perfil e Metas' },
-    { path: '/integracoes', icon: <Link2 size={20} />, label: 'Integrações' },
-    { path: '/exames', icon: <HeartPulse size={20} />, label: 'Saúde' },
-    { path: '/servicos', icon: <Stethoscope size={20} />, label: 'Serviços' }
+    { path: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Início', developed: true },
+    { path: '/esportivo', icon: <Dumbbell size={20} />, label: 'Esportivo', developed: false },
+    { path: '/monitoramento', icon: <Moon size={20} />, label: 'Monitoramento', developed: false },
+    { path: '/ingestao', icon: <Utensils size={20} />, label: 'Ingestão', developed: false },
+    { path: '/body', icon: <User size={20} />, label: 'Body', developed: false },
+    { path: '/perfil', icon: <Target size={20} />, label: 'Perfil e Metas', developed: true },
+    { path: '/integracoes', icon: <Link2 size={20} />, label: 'Integrações', developed: true },
+    { path: '/exames', icon: <HeartPulse size={20} />, label: 'Saúde', developed: true },
+    { path: '/servicos', icon: <Stethoscope size={20} />, label: 'Serviços', developed: false }
   ];
 
   if (isAdmin) {
@@ -72,7 +72,7 @@ const MainLayout = () => {
             <NavLink 
               key={item.path} 
               to={item.path} 
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''} ${item.developed === false ? 'undeveloped' : ''}`}
               title={item.label}
             >
               <div className="nav-icon">{item.icon}</div>
