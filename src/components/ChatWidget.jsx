@@ -1,0 +1,92 @@
+import React, { useState } from 'react';
+import { Send, Bot, User } from 'lucide-react';
+import './ChatWidget.css';
+
+const ChatWidget = ({ 
+  agentName = 'Cérebro IA', 
+  icon: Icon = Bot, 
+  agentColor = 'var(--primary)', 
+  initialMessage = 'Olá, Mauro. Como posso ajudar?' 
+}) => {
+  const [messages, setMessages] = useState([
+    { role: 'assistant', text: initialMessage }
+  ]);
+  const [input, setInput] = useState('');
+
+  React.useEffect(() => {
+    setMessages(prev => {
+      const newMsgs = [...prev];
+      if (newMsgs[0]?.role === 'assistant') {
+        newMsgs[0].text = initialMessage;
+      }
+      return newMsgs;
+    });
+  }, [initialMessage]);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    
+    const newMsg = { role: 'user', text: input };
+    setMessages(prev => [...prev, newMsg]);
+    setInput('');
+    
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: `Você é o ${agentName}, um agente inteligente da plataforma Apogeu.` },
+            ...messages.map(m => ({ role: m.role, content: m.text })),
+            { role: 'user', content: input }
+          ]
+        })
+      });
+
+      const data = await response.json();
+      if (data.choices && data.choices.length > 0) {
+        setMessages(prev => [...prev, { role: 'assistant', text: data.choices[0].message.content }]);
+      }
+    } catch (e) {
+      setMessages(prev => [...prev, { role: 'assistant', text: "Desculpe, ocorreu um erro na conexão." }]);
+    }
+  };
+
+  return (
+    <div className="chat-widget-container glass">
+      <div className="chat-header">
+        <Icon size={20} color={agentColor} />
+        <h3>{agentName}</h3>
+      </div>
+      
+      <div className="chat-messages">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`chat-message ${msg.role}`}>
+            <div className="message-bubble">
+              {msg.text}
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      <form className="chat-input-area" onSubmit={handleSend}>
+        <input 
+          type="text" 
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Pergunte algo ao Cérebro..."
+        />
+        <button type="submit" className="chat-send-btn">
+          <Send size={16} />
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export default ChatWidget;

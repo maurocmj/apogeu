@@ -1,0 +1,270 @@
+.login-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: #090a0f; /* Base dark background */
+}
+
+.login-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  background: transparent;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.login-logo {
+  height: 120px; /* Aumentado em 1.5x conforme solicitado */
+  width: auto;
+}
+
+.brand-divider {
+  width: 1px;
+  height: 48px;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.brand-name {
+  font-family: 'Orbitron', sans-serif; /* Fonte futurista elegante */
+  font-size: 24px;
+  font-weight: 500;
+  color: #f1f5f9;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.login-form-container {
+  display: flex;
+  flex-direction: column;
+  position: relative; /* Para que o subtext absolute não quebre o alinhamento central */
+}
+
+.login-input-group {
+  display: flex;
+  align-items: center;
+  background: rgba(9, 10, 15, 0.95); /* Fundo quase sólido para tapar a linha passando atrás */
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0 8px 0 16px;
+  width: 320px;
+  height: 44px;
+  transition: border-color 0.3s;
+  position: relative;
+  z-index: 10;
+}
+
+.login-input-group:focus-within {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.input-icon {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.login-input-group input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f1f5f9;
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 0 12px;
+}
+
+.login-input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.submit-btn:hover {
+  color: #fff;
+}
+
+.login-subtext {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+/* Responsiveness for smaller screens */
+@media (max-width: 768px) {
+  .login-content {
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .login-brand {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .brand-divider {
+    width: 32px;
+    height: 1px;
+  }
+}
+
+/* Novos estilos para o fluxo de passos e Google Auth */
+.login-subtext-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.login-subtext {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.google-auth-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.google-auth-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 8px;
+  transition: color 0.2s;
+}
+
+.back-btn:hover {
+  color: #fff;
+}
+
+.forgot-password-link {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: underline;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.forgot-password-link:hover {
+  color: #fff;
+}
+
+/* Language Selector Pill */
+.language-selector-pill {
+  position: absolute;
+  top: 32px;
+  right: 48px;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 2px;
+  z-index: 20;
+}
+
+.lang-pill-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 16px;
+  transition: all 0.2s;
+}
+
+.lang-pill-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.lang-pill-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Video Background */
+.video-background-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.video-background {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(100%);
+}
+
+.video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(9, 10, 15, 0.85); /* Escurecimento do vídeo para garantir legibilidade e não tirar o foco da logo/input */
+  backdrop-filter: blur(2px); /* Efeito sutil de desfoque premium */
+}
+
+/* Efeito chapiscado (noise/grain) */
+.video-overlay::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.25;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}

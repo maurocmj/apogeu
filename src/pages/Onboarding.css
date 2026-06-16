@@ -1,0 +1,239 @@
+.onboard-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 600px;
+  min-height: 500px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+.onboard-progress {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.onboard-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.step-counter {
+  font-size: 13px;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 24px;
+  display: inline-block;
+  font-weight: 600;
+}
+
+.onboard-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.onboard-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.onboard-step-content h2 {
+  font-size: 28px;
+  margin: 0;
+  color: var(--text-main);
+}
+
+.onboard-step-content p {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+}
+
+/* Step 1: Platforms */
+.platform-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.platform-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.platform-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.platform-btn.strava:hover {
+  border-color: #fc4c02;
+  box-shadow: 0 0 15px rgba(252, 76, 2, 0.2);
+}
+
+.platform-btn.garmin:hover {
+  border-color: #007cc3;
+  box-shadow: 0 0 15px rgba(0, 124, 195, 0.2);
+}
+
+/* Step 2: Uploads */
+.upload-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px;
+  border: 2px dashed rgba(0, 229, 255, 0.3);
+  border-radius: 12px;
+  background: rgba(0, 229, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.upload-box:hover {
+  background: rgba(0, 229, 255, 0.1);
+  border-color: var(--primary);
+}
+
+.upload-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Step 3: Goals */
+.goal-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.goal-btn {
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.goal-btn:hover, .goal-btn.selected {
+  border-color: var(--primary);
+  background: rgba(0, 229, 255, 0.1);
+}
+
+.goal-textarea {
+  width: 100%;
+  min-height: 80px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  color: var(--text-main);
+  font-family: inherit;
+  resize: vertical;
+  margin-top: 16px;
+}
+
+.goal-textarea.large {
+  min-height: 160px;
+  margin-top: 0;
+}
+
+.goal-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Step 6: Photos */
+.photo-slots {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.photo-slot {
+  flex: 1;
+  aspect-ratio: 3/4;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-muted);
+}
+
+.photo-slot:hover {
+  background: rgba(0, 229, 255, 0.05);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Footer & Buttons */
+.onboard-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 24px;
+}
+
+.btn-skip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px;
+  transition: color 0.2s;
+}
+
+.btn-skip:hover {
+  color: var(--text-main);
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,249 @@
+.sports-container {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+  height: 100%;
+  padding-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .sports-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sports-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sports-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sports-header-row {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sports-tabs {
+  display: flex;
+  gap: 24px;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 15px;
+  padding: 12px 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.tab:hover {
+  color: var(--text-main);
+}
+
+.tab.active {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--primary);
+}
+
+.sports-title-row h2 {
+  font-size: 28px;
+  color: var(--text-main);
+  margin: 16px 0 0 0;
+}
+
+/* Filters */
+.sports-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 20px;
+}
+
+.tags-group {
+  grid-column: 1 / -1;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 16px;
+}
+
+.filter-group label, .tags-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 8px;
+}
+
+.search-bar input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: var(--text-main);
+}
+
+.btn-search {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-search:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.select-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-wrap label {
+  margin: 0;
+  font-weight: 400;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.mt-8 {
+  margin-top: 8px;
+}
+
+.tags-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Table */
+.activities-list-container {
+  padding: 0;
+  overflow: hidden;
+}
+
+.activities-count {
+  font-size: 20px;
+  color: var(--text-main);
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.activities-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 800px;
+}
+
+.activities-table th {
+  text-align: left;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-main);
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+}
+
+.activities-table th svg {
+  vertical-align: middle;
+  margin-left: 4px;
+  color: var(--text-muted);
+}
+
+.activities-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text-main);
+}
+
+.activities-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sport-name {
+  font-weight: 500;
+}
+
+.activity-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.activity-link:hover {
+  text-decoration: underline;
+}
+
+.actions-col {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-action {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-action:hover {
+  text-decoration: underline;
+}
+
+.btn-action.dropdown {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-main);
+}
+
+.btn-action.dropdown:hover {
+  text-decoration: none;
+  color: var(--primary);
+}

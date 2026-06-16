@@ -1,0 +1,87 @@
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-main);
+}
+
+.timeline-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.timeline-track {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  margin-top: 8px;
+}
+
+.timeline-step {
+  display: flex;
+  gap: 16px;
+  position: relative;
+  padding-bottom: 24px;
+}
+
+.timeline-step:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-icon {
+  position: relative;
+  z-index: 2;
+  background-color: var(--bg-main);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  padding-top: 2px;
+}
+
+.timeline-content h4 {
+  font-size: 14px;
+  margin: 0 0 4px 0;
+  color: var(--text-main);
+}
+
+.timeline-content p {
+  font-size: 13px;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.timeline-line {
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: 0;
+  width: 2px;
+  background-color: rgba(255, 255, 255, 0.1);
+  z-index: 1;
+}
+
+.timeline-step.completed .timeline-content h4 {
+  color: #10b981;
+}
+
+.timeline-step.current .timeline-content h4 {
+  color: var(--primary);
+}
+
+.timeline-step.completed .timeline-line {
+  background-color: #10b981;
+}
