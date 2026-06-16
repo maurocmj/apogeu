@@ -63,7 +63,8 @@ const MainLayout = () => {
             alt="Apogeu Logo" 
             className="navbar-logo"
           />
-          <span className="brand-text">Apogeu</span>
+          <div className="navbar-brand-divider"></div>
+          <span className="navbar-brand-name">APOGEU</span>
         </div>
 
         <nav className="navbar-nav">

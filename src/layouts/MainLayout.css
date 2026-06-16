@@ -25,21 +25,28 @@
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   min-width: 150px;
 }
 
 .navbar-logo {
-  height: 40px;
+  height: 48px;
   width: auto;
 }
 
-.brand-text {
+.navbar-brand-divider {
+  width: 1px;
+  height: 32px;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.navbar-brand-name {
   font-family: 'Orbitron', sans-serif;
   font-size: 20px;
-  font-weight: 600;
-  color: white;
-  letter-spacing: 1px;
+  font-weight: 500;
+  color: #f1f5f9;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .navbar-nav {
