@@ -287,87 +287,6 @@ const Exams = () => {
           </div>
         </div>
 
-        {/* Histórico / Linha do Tempo */}
-        <h3 className="section-title">Linha do Tempo Clínica</h3>
-        
-        {exams.length === 0 && (
-          <p style={{ color: 'var(--text-muted)' }}>Nenhum laudo cadastrado ainda.</p>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {exams.map((exam, index) => (
-            <div key={exam.id} className="glass p-6 rounded-xl hover-glow">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: expandedExams[exam.id] ? '16px' : '0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ background: 'rgba(0, 229, 255, 0.1)', padding: '12px', borderRadius: '50%' }}>
-                    <Activity color="var(--primary)" size={20} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px', marginTop: 0 }}>{exam.exam_type}</h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0 }}>
-                      Coletado em {new Date(exam.collection_date).toLocaleDateString()}
-                      {` • Lab: ${exam.laboratory_name && exam.laboratory_name !== 'null' ? exam.laboratory_name : 'Não identificado'}`}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {exam.status === 'processing' ? (
-                    <span style={{ fontSize: '12px', padding: '4px 8px', background: 'rgba(255, 255, 255, 0.1)', color: 'white', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Loader2 className="animate-spin" size={12} /> IA Lendo...
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: '12px', padding: '4px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '4px' }}>Dados Extraídos</span>
-                  )}
-                  {exam.document_url && (
-                    <a href={exam.document_url} target="_blank" rel="noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Baixar Original">
-                      <Download size={18} color="var(--primary)" />
-                    </a>
-                  )}
-                  <button onClick={() => toggleExam(exam.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: '8px' }}>
-                    {expandedExams[exam.id] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                  </button>
-                </div>
-              </div>
-
-              {expandedExams[exam.id] && exam.ai_insights && exam.ai_insights.chat_message && (
-                <div style={{ padding: '16px', background: 'rgba(245, 158, 11, 0.05)', borderLeft: '4px solid #f59e0b', borderRadius: '4px', marginBottom: '16px', marginTop: '16px' }}>
-                  <p style={{ color: 'white', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>
-                    {exam.ai_insights.chat_message}
-                  </p>
-                </div>
-              )}
-              
-              {expandedExams[exam.id] && exam.biomarkers && Object.keys(exam.biomarkers).length > 0 && (
-                <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'white' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '500' }}>{Object.keys(exam.biomarkers || {}).length} Indicadores Clínicos Encontrados</span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px', padding: '16px' }}>
-                    {Object.entries(exam.biomarkers).map(([key, value]) => {
-                      const valObj = typeof value === 'object' ? value : { value: value, status: 'normal' };
-                      const borderColor = getStatusColor(valObj.status);
-                      return (
-                        <div key={key} style={{ background: 'rgba(0,0,0,0.5)', padding: '8px', borderRadius: '4px', border: `1px solid ${borderColor}` }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{key.replace(/_/g, ' ')}</span>
-                            <div 
-                              onMouseEnter={(e) => handleMouseEnter(e, key)} 
-                              onMouseLeave={handleMouseLeave}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', cursor: 'help' }}
-                            >
-                              {loadingInfo[key] ? <Loader2 size={12} className="animate-spin" color="var(--primary)" /> : <Info size={12} color="var(--text-muted)" />}
-                            </div>
-                          </div>
-                          <strong style={{ fontSize: '14px', color: 'white' }}>{String(valObj.value)}</strong>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
         </div>
       </main>
 
@@ -389,6 +308,112 @@ const Exams = () => {
           />
         )}
       </aside>
+
+      {/* Tabela de Linha do Tempo Clínica */}
+      <section style={{ gridColumn: '1 / -1', marginTop: '16px', marginBottom: '32px' }}>
+        <div className="glass" style={{ borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Activity color="var(--primary)" size={20} /> Histórico de Exames
+            </h3>
+          </div>
+          
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--text-muted)', fontSize: '13px', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '16px 24px', fontWeight: '500' }}>Exame</th>
+                  <th style={{ padding: '16px 24px', fontWeight: '500' }}>Data</th>
+                  <th style={{ padding: '16px 24px', fontWeight: '500' }}>Laboratório</th>
+                  <th style={{ padding: '16px 24px', fontWeight: '500' }}>Status</th>
+                  <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'right' }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {exams.length === 0 && (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum laudo cadastrado ainda.</td>
+                  </tr>
+                )}
+                {exams.map(exam => (
+                  <React.Fragment key={exam.id}>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: expandedExams[exam.id] ? 'rgba(255,255,255,0.02)' : 'transparent', transition: 'background 0.3s ease' }} className="hover-glow">
+                      <td style={{ padding: '16px 24px', fontWeight: '600', color: 'white' }}>{exam.exam_type}</td>
+                      <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>{new Date(exam.collection_date).toLocaleDateString()}</td>
+                      <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>{exam.laboratory_name && exam.laboratory_name !== 'null' ? exam.laboratory_name : '-'}</td>
+                      <td style={{ padding: '16px 24px' }}>
+                        {exam.status === 'processing' ? (
+                          <span style={{ fontSize: '12px', padding: '4px 8px', background: 'rgba(255, 255, 255, 0.1)', color: 'white', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Loader2 className="animate-spin" size={12} /> IA Lendo
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '12px', padding: '4px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '4px' }}>Dados Extraídos</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px' }}>
+                          {exam.document_url && (
+                            <a href={exam.document_url} target="_blank" rel="noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Baixar Original">
+                              <Download size={18} color="var(--primary)" />
+                            </a>
+                          )}
+                          <button onClick={() => toggleExam(exam.id)} style={{ background: expandedExams[exam.id] ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255,255,255,0.05)', border: expandedExams[exam.id] ? '1px solid var(--primary)' : '1px solid transparent', color: 'white', cursor: 'pointer', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s ease' }}>
+                            {expandedExams[exam.id] ? 'Ocultar' : 'Ver Detalhes'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    {expandedExams[exam.id] && (
+                      <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                        <td colSpan={5} style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          {exam.ai_insights && exam.ai_insights.chat_message && (
+                            <div style={{ padding: '16px', background: 'rgba(245, 158, 11, 0.05)', borderLeft: '4px solid #f59e0b', borderRadius: '4px', marginBottom: '16px' }}>
+                              <p style={{ color: 'white', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>
+                                {exam.ai_insights.chat_message}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {exam.biomarkers && Object.keys(exam.biomarkers).length > 0 && (
+                            <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', overflow: 'hidden' }}>
+                              <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'white' }}>
+                                <span style={{ fontSize: '13px', fontWeight: '500' }}>{Object.keys(exam.biomarkers || {}).length} Indicadores Clínicos Encontrados</span>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px', padding: '16px' }}>
+                                {Object.entries(exam.biomarkers).map(([key, value]) => {
+                                  const valObj = typeof value === 'object' ? value : { value: value, status: 'normal' };
+                                  const borderColor = getStatusColor(valObj.status);
+                                  return (
+                                    <div key={key} style={{ background: 'rgba(0,0,0,0.5)', padding: '12px', borderRadius: '6px', border: `1px solid ${borderColor}` }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' }}>{key.replace(/_/g, ' ')}</span>
+                                        <div 
+                                          onMouseEnter={(e) => handleMouseEnter(e, key)} 
+                                          onMouseLeave={handleMouseLeave}
+                                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', cursor: 'help' }}
+                                        >
+                                          {loadingInfo[key] ? <Loader2 size={12} className="animate-spin" color="var(--primary)" /> : <Info size={12} color="var(--text-muted)" />}
+                                        </div>
+                                      </div>
+                                      <strong style={{ fontSize: '16px', color: 'white' }}>{String(valObj.value)}</strong>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       {/* Tooltip Modal */}
       {tooltip.isOpen && (
