@@ -17,14 +17,40 @@ const ActionPlanCard = ({ title, icon: Icon, color, items }) => {
 
   return (
     <div className="action-plan-card glass" style={{ '--plan-color': color }}>
-      <div className="action-plan-header">
-        <div className="action-plan-icon" style={{ background: `${color}1A`, color: color }}>
-          <Icon size={24} />
+      <div className="action-plan-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <div className="action-plan-icon" style={{ background: `${color}1A`, color: color }}>
+            <Icon size={24} />
+          </div>
+          <div>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Plano de Ação</span>
+            <h3 style={{ color: 'var(--text-main)', fontSize: '16px', margin: 0 }}>{title}</h3>
+          </div>
         </div>
-        <div>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Plano de Ação</span>
-          <h3 style={{ color: 'var(--text-main)', fontSize: '16px', margin: 0 }}>{title}</h3>
-        </div>
+        {!accepted ? (
+          <button 
+            style={{ 
+              background: `${color}2A`, 
+              border: `1px solid ${color}`, 
+              color: color, 
+              padding: '6px 12px', 
+              borderRadius: '8px', 
+              fontSize: '12px', 
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
+            onClick={() => setAccepted(true)}
+            onMouseOver={(e) => e.currentTarget.style.background = `${color}4A`}
+            onMouseOut={(e) => e.currentTarget.style.background = `${color}2A`}
+          >
+            Aceitar
+          </button>
+        ) : (
+          <span style={{ fontSize: '12px', color: 'var(--text-main)', fontWeight: '600', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '16px' }}>
+            {checkedItems.filter(Boolean).length} de {items.length}
+          </span>
+        )}
       </div>
 
       <div className="action-plan-list">
@@ -43,25 +69,6 @@ const ActionPlanCard = ({ title, icon: Icon, color, items }) => {
           </div>
         ))}
       </div>
-
-      {!accepted ? (
-        <button 
-          className="btn-accept-plan" 
-          style={{ background: `${color}2A`, borderColor: color, color: color }}
-          onClick={() => setAccepted(true)}
-        >
-          Aceitar Plano
-        </button>
-      ) : (
-        <div className="action-plan-progress">
-          <div className="progress-bar-mini" style={{ height: '6px' }}>
-            <div className="progress-fill-mini" style={{ width: `${progress * 100}%`, background: color }}></div>
-          </div>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            {checkedItems.filter(Boolean).length} de {items.length} concluídos
-          </span>
-        </div>
-      )}
     </div>
   );
 };

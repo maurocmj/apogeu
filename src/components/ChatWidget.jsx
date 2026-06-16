@@ -6,7 +6,8 @@ const ChatWidget = ({
   agentName = 'Cérebro IA', 
   icon: Icon = Bot, 
   agentColor = 'var(--primary)', 
-  initialMessage = 'Olá, Mauro. Como posso ajudar?' 
+  initialMessage = 'Olá, Mauro. Como posso ajudar?',
+  context = ''
 }) => {
   const [messages, setMessages] = useState([
     { role: 'assistant', text: initialMessage }
@@ -41,7 +42,7 @@ const ChatWidget = ({
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: `Você é o ${agentName}, um agente inteligente da plataforma Apogeu.` },
+            { role: 'system', content: `Você é o ${agentName}, um agente inteligente da plataforma Apogeu. Você ajuda o usuário com sua saúde.\n\n${context ? `Aqui estão os dados clínicos do usuário para referência:\n${context}` : ''}` },
             ...messages.map(m => ({ role: m.role, content: m.text })),
             { role: 'user', content: input }
           ]

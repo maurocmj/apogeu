@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, FileText, Search, ExternalLink, ShieldAlert, Target, Loader2, Save, Info, Download, ChevronDown, ChevronUp, Activity, Heart } from 'lucide-react';
+import { Upload, FileText, Search, ExternalLink, ShieldAlert, Target, Loader2, Save, Info, Download, ChevronDown, ChevronUp, Activity, Heart, Calendar, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import ChatWidget from '../components/ChatWidget';
 import ActionPlanCard from '../components/ActionPlanCard';
@@ -202,7 +202,7 @@ const Exams = () => {
   const initialMessage = insights?.chat_message || "Envie um laudo de exame para que eu possa cruzar os dados com seu Perfil e Genética. Seu Plano de Saúde surgirá aqui.";
   const actionPlanItems = insights?.action_plan || [];
 
-  const lastExamDate = latestProcessedExam ? new Date(latestProcessedExam.collection_date).toLocaleDateString() : 'N/A';
+  const lastExamDate = latestProcessedExam ? new Date(latestProcessedExam.collection_date).toLocaleDateString('pt-BR') : 'N/A';
   let totalBiomarkers = 0;
   exams.forEach(ex => {
     if (ex.biomarkers) {
@@ -210,84 +210,49 @@ const Exams = () => {
     }
   });
 
-  return (
-    <div className="home-container" style={{ padding: 0 }}>
-      
-      <header className="page-header" style={{ gridColumn: '1 / -1', marginBottom: '0' }}>
-        <h1 className="neon-text">Saúde Global</h1>
-        <p>Análise 360º dos seus indicadores clínicos, métricas e exames</p>
-      </header>
+  const examContext = exams.map(e => `Exame: ${e.exam_type} (Data: ${new Date(e.collection_date).toLocaleDateString('pt-BR')}). Biomarcadores: ${JSON.stringify(e.biomarkers)}`).join('\n\n');
 
+  return (
+    <div className="home-container" style={{ padding: 0, gridTemplateColumns: '450px 1fr', alignItems: 'start' }}>
       {/* Main Column */}
       <main className="home-main-col" style={{ marginTop: '24px' }}>
         
         {/* Radar e Visão Geral */}
-        <div className="feed-card glass">
+        <div className="feed-card glass" style={{ marginBottom: '24px' }}>
           <div className="feed-header">
             <h3>Visão Geral Clínica</h3>
             <span className="badge">Atualizado {lastExamDate !== 'N/A' ? lastExamDate : 'hoje'}</span>
           </div>
-          <div className="radar-section">
-            <div className="radar-chart-wrapper">
+          <div className="radar-chart-wrapper" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <div style={{ width: '100%', maxWidth: '320px' }}>
               <HealthRadarChart />
             </div>
-            <div className="radar-insights">
-              <div className="insight-item positive">
-                <strong>Último Checkup:</strong> {lastExamDate}
-              </div>
-              <div className="insight-item positive">
-                <strong>Indicadores Analisados:</strong> {totalBiomarkers} ao longo do tempo.
-              </div>
-              <div className="insight-item warning">
-                <strong>Atenção Primária:</strong> Parâmetros metabólicos merecem observação nas próximas semanas.
-              </div>
+          </div>
+        </div>
+
+        {/* Resumo Clínico */}
+        <div style={{ marginBottom: '32px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px', marginTop: 0, color: 'var(--text-muted)' }}>Resumo de Dados</h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '12px', borderLeft: '2px solid rgba(0, 229, 255, 0.5)' }}>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Último Checkup</span>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>{lastExamDate}</span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '12px', borderLeft: '2px solid rgba(16, 185, 129, 0.5)' }}>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Indicadores</span>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>{totalBiomarkers} analisados</span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '12px', borderLeft: '2px solid rgba(245, 158, 11, 0.5)' }}>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Atenção</span>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>Risco Metabólico</span>
             </div>
           </div>
         </div>
 
-        {/* Upload Compacto */}
-        <div className="glass" style={{ padding: '24px', borderRadius: '12px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-              <Upload color="var(--primary)" size={20} /> Adicionar Novo Laudo
-            </h3>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>PDF apenas</span>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <label style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '48px',
-                background: selectedFile ? 'rgba(0, 229, 255, 0.05)' : 'rgba(255,255,255,0.02)',
-                border: selectedFile ? '1px solid var(--primary)' : '1px dashed rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-              }}
-              className="hover-glow"
-            >
-              <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleFileChange} />
-              <span style={{ color: selectedFile ? 'white' : 'var(--text-muted)', fontSize: '14px' }}>
-                {selectedFile ? selectedFile.name : 'Clique para selecionar arquivo...'}
-              </span>
-            </label>
 
-            <button 
-              onClick={handleUpload}
-              disabled={uploading || !selectedFile}
-              className="btn-primary" 
-              style={{ height: '48px', padding: '0 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
-            >
-              {uploading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-              {uploading ? 'Analisando...' : 'Enviar Laudo'}
-            </button>
-          </div>
-        </div>
-
-        </div>
       </main>
 
       {/* Right Column: AI Chat & Plan */}
@@ -297,6 +262,7 @@ const Exams = () => {
           icon={Heart} 
           agentColor="#ef4444" 
           initialMessage={initialMessage} 
+          context={examContext}
         />
 
         {actionPlanItems.length > 0 && (
@@ -312,10 +278,42 @@ const Exams = () => {
       {/* Tabela de Linha do Tempo Clínica */}
       <section style={{ gridColumn: '1 / -1', marginTop: '16px', marginBottom: '32px' }}>
         <div className="glass" style={{ borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Activity color="var(--primary)" size={20} /> Histórico de Exames
             </h3>
+            
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '36px',
+                  padding: '0 16px',
+                  background: selectedFile ? 'rgba(0, 229, 255, 0.05)' : 'rgba(255,255,255,0.02)',
+                  border: selectedFile ? '1px solid var(--primary)' : '1px dashed rgba(255, 255, 255, 0.2)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                }}
+                className="hover-glow"
+              >
+                <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleFileChange} />
+                <span style={{ color: selectedFile ? 'white' : 'var(--text-muted)', fontSize: '13px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedFile ? selectedFile.name : 'Selecionar PDF...'}
+                </span>
+              </label>
+
+              <button 
+                onClick={handleUpload}
+                disabled={uploading || !selectedFile}
+                className="btn-primary" 
+                style={{ height: '36px', padding: '0 16px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
+              >
+                {uploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                {uploading ? 'Enviando...' : 'Adicionar'}
+              </button>
+            </div>
           </div>
           
           <div style={{ overflowX: 'auto' }}>
@@ -337,29 +335,31 @@ const Exams = () => {
                 )}
                 {exams.map(exam => (
                   <React.Fragment key={exam.id}>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: expandedExams[exam.id] ? 'rgba(255,255,255,0.02)' : 'transparent', transition: 'background 0.3s ease' }} className="hover-glow">
-                      <td style={{ padding: '16px 24px', fontWeight: '600', color: 'white' }}>{exam.exam_type}</td>
-                      <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>{new Date(exam.collection_date).toLocaleDateString()}</td>
-                      <td style={{ padding: '16px 24px', color: 'var(--text-muted)' }}>{exam.laboratory_name && exam.laboratory_name !== 'null' ? exam.laboratory_name : '-'}</td>
-                      <td style={{ padding: '16px 24px' }}>
+                    <tr 
+                      onClick={() => toggleExam(exam.id)}
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: expandedExams[exam.id] ? 'rgba(255,255,255,0.02)' : 'transparent', transition: 'background 0.3s ease', cursor: 'pointer' }} 
+                      className="hover-glow"
+                    >
+                      <td style={{ padding: '12px 16px', fontWeight: '500', color: 'white', fontSize: '13px' }}>{exam.exam_type}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>{new Date(exam.collection_date).toLocaleDateString('pt-BR')}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>{exam.laboratory_name && exam.laboratory_name !== 'null' ? exam.laboratory_name : '-'}</td>
+                      <td style={{ padding: '12px 16px' }}>
                         {exam.status === 'processing' ? (
-                          <span style={{ fontSize: '12px', padding: '4px 8px', background: 'rgba(255, 255, 255, 0.1)', color: 'white', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <Loader2 className="animate-spin" size={12} /> IA Lendo
+                          <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(255, 255, 255, 0.1)', color: 'white', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Loader2 className="animate-spin" size={12} /> Lendo
                           </span>
                         ) : (
-                          <span style={{ fontSize: '12px', padding: '4px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '4px' }}>Dados Extraídos</span>
+                          <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '4px' }}>Extraído</span>
                         )}
                       </td>
-                      <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px' }}>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
                           {exam.document_url && (
-                            <a href={exam.document_url} target="_blank" rel="noreferrer" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Baixar Original">
+                            <a href={exam.document_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Baixar Original">
                               <Download size={18} color="var(--primary)" />
                             </a>
                           )}
-                          <button onClick={() => toggleExam(exam.id)} style={{ background: expandedExams[exam.id] ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255,255,255,0.05)', border: expandedExams[exam.id] ? '1px solid var(--primary)' : '1px solid transparent', color: 'white', cursor: 'pointer', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: '500', transition: 'all 0.2s ease' }}>
-                            {expandedExams[exam.id] ? 'Ocultar' : 'Ver Detalhes'}
-                          </button>
+                          {expandedExams[exam.id] ? <ChevronUp size={18} color="var(--text-muted)" /> : <ChevronDown size={18} color="var(--text-muted)" />}
                         </div>
                       </td>
                     </tr>
@@ -376,28 +376,24 @@ const Exams = () => {
                           )}
                           
                           {exam.biomarkers && Object.keys(exam.biomarkers).length > 0 && (
-                            <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', overflow: 'hidden' }}>
-                              <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'white' }}>
-                                <span style={{ fontSize: '13px', fontWeight: '500' }}>{Object.keys(exam.biomarkers || {}).length} Indicadores Clínicos Encontrados</span>
-                              </div>
-
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px', padding: '16px' }}>
+                            <div style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' }}>
                                 {Object.entries(exam.biomarkers).map(([key, value]) => {
                                   const valObj = typeof value === 'object' ? value : { value: value, status: 'normal' };
                                   const borderColor = getStatusColor(valObj.status);
                                   return (
-                                    <div key={key} style={{ background: 'rgba(0,0,0,0.5)', padding: '12px', borderRadius: '6px', border: `1px solid ${borderColor}` }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' }}>{key.replace(/_/g, ' ')}</span>
+                                    <div key={key} style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: `1px solid ${borderColor}`, transition: 'all 0.2s ease' }} className="hover-glow">
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px', lineHeight: '1.2' }}>{key.replace(/_/g, ' ')}</span>
                                         <div 
                                           onMouseEnter={(e) => handleMouseEnter(e, key)} 
                                           onMouseLeave={handleMouseLeave}
-                                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', cursor: 'help' }}
+                                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', marginLeft: '4px', flexShrink: 0 }}
                                         >
-                                          {loadingInfo[key] ? <Loader2 size={12} className="animate-spin" color="var(--primary)" /> : <Info size={12} color="var(--text-muted)" />}
+                                          {loadingInfo[key] ? <Loader2 size={12} className="animate-spin" color="var(--primary)" /> : <Info size={12} color="var(--text-muted)" style={{ opacity: 0.6 }} />}
                                         </div>
                                       </div>
-                                      <strong style={{ fontSize: '16px', color: 'white' }}>{String(valObj.value)}</strong>
+                                      <strong style={{ fontSize: '14px', color: 'white' }}>{String(valObj.value)}</strong>
                                     </div>
                                   );
                                 })}
