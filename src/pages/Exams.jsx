@@ -259,15 +259,10 @@ const Exams = () => {
         <div className="feed-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ margin: 0 }}>Histórico de Score Clínico</h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>Score Geral unificado & Sistemas</p>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-            <span className="badge" style={{ background: 'rgba(0, 229, 255, 0.12)', color: 'var(--primary)', border: '1px solid rgba(0, 229, 255, 0.25)', fontWeight: '700', fontSize: '12px', padding: '6px 12px', borderRadius: '8px' }}>
-              Geral: 90%
-            </span>
+            <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>Evolução do Score Geral e Sistemas</p>
           </div>
         </div>
-        <HealthScoreTimelineChart />
+        <HealthScoreTimelineChart exams={exams} />
       </aside>
 
       {/* Protocolo Clínico & Medical Agent Chat (Side-by-side below) */}
