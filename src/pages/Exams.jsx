@@ -64,9 +64,11 @@ const Exams = () => {
       .eq('user_id', uid)
       .order('collection_date', { ascending: false });
     if (data) {
-      setExams(data);
-      if (data.length > 0) {
-        setExpandedExams({ [data[0].id]: true }); // expand the latest by default
+      // Filtra os exames para não exibir os que ficaram presos eternamente em "processing"
+      const validExams = data.filter(exam => exam.status !== 'processing');
+      setExams(validExams);
+      if (validExams.length > 0) {
+        setExpandedExams({ [validExams[0].id]: true }); // expand the latest by default
       }
     }
   };
