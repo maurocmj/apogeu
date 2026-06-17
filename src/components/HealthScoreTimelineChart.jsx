@@ -46,9 +46,12 @@ const HealthScoreTimelineChart = ({ exams = [] }) => {
       }
 
       const dateObj = new Date(exam.collection_date);
-      const name = `${dateObj.getDate()} ${dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')}`;
-
-      const dataPoint = { name, Geral: 0 };
+      const dataPoint = { 
+        time: dateObj.getTime(), 
+        displayDate: dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
+        Geral: 0 
+      };
+      
       let totalSystemScore = 0;
       let systemsWithData = 0;
 
@@ -120,6 +123,11 @@ const HealthScoreTimelineChart = ({ exams = [] }) => {
     return 1.0;
   };
 
+  const formatDateTick = (unixTime) => {
+    const date = new Date(unixTime);
+    return `${date.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')} ${date.getFullYear().toString().slice(2)}`;
+  };
+
   return (
     <div style={{ width: '100%', height: '320px' }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -137,7 +145,11 @@ const HealthScoreTimelineChart = ({ exams = [] }) => {
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
           
           <XAxis 
-            dataKey="name" 
+            dataKey="time" 
+            type="number"
+            scale="time"
+            domain={['dataMin', 'dataMax']}
+            tickFormatter={formatDateTick}
             stroke="var(--text-muted)" 
             fontSize={11}
             tickLine={false}
@@ -150,6 +162,12 @@ const HealthScoreTimelineChart = ({ exams = [] }) => {
             axisLine={false}
           />
           <Tooltip
+            labelFormatter={(label, payload) => {
+              if (payload && payload.length > 0 && payload[0].payload) {
+                return payload[0].payload.displayDate;
+              }
+              return formatDateTick(label);
+            }}
             contentStyle={{
               backgroundColor: 'rgba(22, 25, 32, 0.95)',
               border: '1px solid rgba(255,255,255,0.1)',

@@ -340,24 +340,44 @@ async function syncStravaActivities(supabaseAdmin: any, userId: string, accessTo
       continue; // Já sincronizada
     }
 
+    // Buscar detalhes completos do treino (incluindo calorias, descrição, etc.)
+    let detailedActivity = activity;
+    try {
+      console.log(`Buscando detalhes do treino ${activity.id} para obter calorias e descrição...`);
+      const detailResponse = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}`, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`
+        }
+      });
+      if (detailResponse.ok) {
+        detailedActivity = await detailResponse.json();
+      } else {
+        console.error(`Erro ao buscar detalhes do treino ${activity.id}: Status ${detailResponse.status}`);
+      }
+    } catch (err) {
+      console.error(`Falha na chamada de detalhes do treino ${activity.id}:`, err);
+    }
+
     // Criar o evento correspondente na tabela health_events
     // Adaptamos o esporte do Strava para o formato legível
-    const sportName = formatSportName(activity.sport_type || activity.type);
+    const sportName = formatSportName(detailedActivity.sport_type || detailedActivity.type);
 
     const eventPayload = {
-      id: activity.id,
+      id: detailedActivity.id,
       source: 'strava',
       sport: sportName,
-      title: activity.name,
-      distance: activity.distance,       // em metros
-      moving_time: activity.moving_time,  // em segundos
-      elapsed_time: activity.elapsed_time,
-      total_elevation_gain: activity.total_elevation_gain,
-      start_date: activity.start_date,    // ISO 8601
-      average_heartrate: activity.average_heartrate || null,
-      max_heartrate: activity.max_heartrate || null,
-      suffer_score: activity.suffer_score || 0, // esforço relativo do Strava
-      raw: activity // guarda todos os metadados ricos do Strava
+      title: detailedActivity.name,
+      distance: detailedActivity.distance,       // em metros
+      moving_time: detailedActivity.moving_time,  // em segundos
+      elapsed_time: detailedActivity.elapsed_time,
+      total_elevation_gain: detailedActivity.total_elevation_gain,
+      start_date: detailedActivity.start_date,    // ISO 8601
+      average_heartrate: detailedActivity.average_heartrate || null,
+      max_heartrate: detailedActivity.max_heartrate || null,
+      suffer_score: detailedActivity.suffer_score || 0, // esforço relativo do Strava
+      calories: detailedActivity.calories || null, // Calorias reais calculadas pelo Strava
+      description: detailedActivity.description || null, // Descrição subjetiva do treino
+      raw: detailedActivity // guarda todos os metadados ricos do Strava
     };
 
     const { error: insertError } = await supabaseAdmin
@@ -365,7 +385,7 @@ async function syncStravaActivities(supabaseAdmin: any, userId: string, accessTo
       .insert({
         user_id: userId,
         event_type: 'WORKOUT_COMPLETED',
-        event_date: activity.start_date,
+        event_date: detailedActivity.start_date,
         payload: eventPayload
       });
 
