@@ -148,16 +148,19 @@ const Profile = () => {
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: '400', letterSpacing: '-0.5px', margin: 0 }}>
             <Target size={24} color="#fff" /> Perfil e Metas
           </h1>
-          <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>/ Afinamento do Gêmeo Digital e Memória Base</p>
+          <p style={{ color: '#888', fontSize: '15px', fontWeight: '400', letterSpacing: '-0.2px', margin: 0 }}>
+            / Afinamento do Gêmeo Digital
+          </p>
         </div>
 
         <button 
           className="sync-btn" 
-          style={{ width: 'auto', padding: '10px 24px', margin: 0 }}
+          style={{ width: '44px', height: '44px', padding: 0, margin: 0, borderRadius: '8px' }}
           onClick={handleSave}
           disabled={saving}
+          title="Salvar alterações"
         >
-          {saving ? 'Sincronizando...' : 'Sincronizar Gêmeo Digital'}
+          <Save size={20} />
         </button>
       </header>
 
