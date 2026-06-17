@@ -1,11 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 import { Activity, Flame, Heart, Moon, Droplet, User as UserIcon, Medal, Apple, Dumbbell, Brain, Target } from 'lucide-react';
 import RadarChartScore from '../components/RadarChartScore';
 import GoalTimeline from '../components/GoalTimeline';
 import ChatWidget from '../components/ChatWidget';
+import { supabase } from '../lib/supabaseClient';
 
 const Dashboard = () => {
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Obter nome da tabela de perfis
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (data && data.full_name) {
+          setUserName(data.full_name);
+        } else {
+          // Fallback para o email ou metadata
+          setUserName(session.user.user_metadata?.full_name || session.user.email.split('@')[0]);
+        }
+      }
+    };
+    fetchProfile();
+  }, []);
+
   return (
     <div className="home-container">
       {/* Left Column: Profile & Stats */}
@@ -14,7 +39,7 @@ const Dashboard = () => {
           <div className="profile-avatar">
             <UserIcon size={32} color="#00e5ff" />
           </div>
-          <h2>Mauro Moraes Jr.</h2>
+          <h2>{userName || 'Carregando...'}</h2>
           
           <div className="profile-stats">
             <div className="stat-box">

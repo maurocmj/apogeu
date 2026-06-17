@@ -138,3 +138,25 @@
     gap: 8px;
   }
 }
+
+@media (max-width: 768px) {
+  .top-navbar {
+    padding: 0 12px;
+  }
+  .navbar-brand {
+    min-width: auto;
+    gap: 8px;
+  }
+  .navbar-brand-name, .navbar-brand-divider {
+    display: none;
+  }
+  .navbar-actions {
+    min-width: auto;
+  }
+  .navbar-nav {
+    justify-content: flex-start;
+  }
+  .nav-item {
+    padding: 8px;
+  }
+}

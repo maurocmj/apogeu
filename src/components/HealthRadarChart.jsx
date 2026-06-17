@@ -62,9 +62,13 @@ const HealthRadarChart = ({ exams = [] }) => {
         const foundKey = Object.keys(allBiomarkers).find(k => k.toLowerCase().includes(bk));
         if (foundKey) {
           foundCount++;
-          const status = allBiomarkers[foundKey];
-          if (status === 'attention' || status === 'warning') penalty += 1;
-          if (status === 'critical' || status === 'high' || status === 'low') penalty += 2;
+          const status = (allBiomarkers[foundKey] || 'normal').toLowerCase();
+          
+          if (status.includes('attention') || status.includes('warning') || status.includes('alterado') || status.includes('atencao') || status.includes('atenção')) {
+            penalty += 1;
+          } else if (status.includes('critical') || status.includes('high') || status.includes('low') || status.includes('danger') || status.includes('critico') || status.includes('crítico')) {
+            penalty += 2;
+          }
         }
       });
       
