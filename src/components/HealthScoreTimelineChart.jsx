@@ -31,25 +31,33 @@ const HealthScoreTimelineChart = ({ exams = [] }) => {
     if (!exams || exams.length === 0) return mockTimelineData;
 
     const sorted = [...exams].sort((a, b) => new Date(a.collection_date) - new Date(b.collection_date));
-    const allBiomarkersAccumulated = {};
-    const result = [];
-
-    const systems = ['Cardiovascular', 'Metabólico', 'Neurológico', 'Imunológico', 'Órgãos Vitais', 'Estrutural'];
-
+    
+    // Group exams by unique date string
+    const groupedExams = {};
     sorted.forEach(exam => {
-      if (exam.biomarkers) {
-        Object.entries(exam.biomarkers).forEach(([key, value]) => {
-          const status = typeof value === 'object' && value !== null ? value.status : 'normal';
-          const realVal = typeof value === 'object' && value !== null ? value.value : value;
-          allBiomarkersAccumulated[key] = { status, value: realVal };
-        });
-      }
-
       const dateObj = new Date(exam.collection_date);
       const name = `${dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')} ${dateObj.getFullYear().toString().slice(2)}`;
-      
+      if (!groupedExams[name]) groupedExams[name] = [];
+      groupedExams[name].push(exam);
+    });
+
+    const allBiomarkersAccumulated = {};
+    const result = [];
+    const systems = ['Cardiovascular', 'Metabólico', 'Neurológico', 'Imunológico', 'Órgãos Vitais', 'Estrutural'];
+
+    Object.entries(groupedExams).forEach(([name, examsGroup]) => {
+      examsGroup.forEach(exam => {
+        if (exam.biomarkers) {
+          Object.entries(exam.biomarkers).forEach(([key, value]) => {
+            const status = typeof value === 'object' && value !== null ? value.status : 'normal';
+            const realVal = typeof value === 'object' && value !== null ? value.value : value;
+            allBiomarkersAccumulated[key] = { status, value: realVal };
+          });
+        }
+      });
+
       const dataPoint = { 
-        time: dateObj.getTime(), 
+        time: new Date(examsGroup[0].collection_date).getTime(), 
         displayDate: name,
         name: name,
         Geral: 0 
