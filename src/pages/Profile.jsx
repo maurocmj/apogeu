@@ -143,11 +143,22 @@ const Profile = () => {
 
   return (
     <div className="module-container profile-container">
-      <header className="page-header" style={{ marginBottom: '40px' }}>
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: '400', letterSpacing: '-0.5px', margin: 0 }}>
-          <Target size={24} color="#fff" /> Perfil e Metas
-        </h1>
-        <p style={{ color: '#888', fontSize: '14px', marginTop: '8px' }}>Afinamento do Gêmeo Digital e Memória Base</p>
+      <header className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px' }}>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: '400', letterSpacing: '-0.5px', margin: 0 }}>
+            <Target size={24} color="#fff" /> Perfil e Metas
+          </h1>
+          <p style={{ color: '#888', fontSize: '14px', margin: 0 }}>/ Afinamento do Gêmeo Digital e Memória Base</p>
+        </div>
+
+        <button 
+          className="sync-btn" 
+          style={{ width: 'auto', padding: '10px 24px', margin: 0 }}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? 'Sincronizando...' : 'Sincronizar Gêmeo Digital'}
+        </button>
       </header>
 
       {message.text && (
@@ -250,18 +261,6 @@ const Profile = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="profile-actions">
-        <button 
-          className="sync-btn" 
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? 'Sincronizando Core...' : (
-            <><HeartPulse size={24} /> Sincronizar Gêmeo Digital</>
-          )}
-        </button>
       </div>
     </div>
   );
