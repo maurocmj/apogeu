@@ -102,9 +102,9 @@ const HealthScoreTimelineChart = ({ exams = [] }) => {
       });
 
       if (systemsWithData > 0) {
-        dataPoint['Geral'] = Math.round(totalSystemScore / systemsWithData);
+        dataPoint['Geral'] = Math.round(totalSystemScore / 6);
       } else {
-        dataPoint['Geral'] = 100;
+        dataPoint['Geral'] = 0;
       }
       
       result.push(dataPoint);
