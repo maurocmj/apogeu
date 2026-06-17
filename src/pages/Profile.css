@@ -13,7 +13,6 @@
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 24px;
   margin-top: 32px;
-  align-items: stretch;
 }
 
 .profile-card {
@@ -101,8 +100,8 @@
 }
 
 textarea.unified-textarea {
-  height: 160px;
-  resize: vertical;
+  height: 80px;
+  resize: none;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 8px;

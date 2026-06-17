@@ -237,27 +237,26 @@ const Profile = () => {
               <input 
                 type="text"
                 className="glass-input"
-                placeholder="Ex: Intolerância à lactose, alergia a corantes..."
+                placeholder="Ex: Intolerância à lactose..."
                 value={medicalHistory.allergies}
                 onChange={e => setMedicalHistory({...medicalHistory, allergies: e.target.value})}
               />
             </div>
-
-            <div className="form-group">
-              <label>Condições Crônicas ou Lesões Prévias</label>
+            <div className="form-group" style={{ marginTop: '24px' }}>
+              <label>Condições Crônicas / Lesões</label>
               <textarea 
                 className="glass-input unified-textarea"
-                placeholder="Ex: Asma grau 1, hipertensão controlada, cirurgia no joelho em 2021..."
+                placeholder="Ex: Asma grau 1, hipertensão..."
                 value={medicalHistory.chronic_diseases}
                 onChange={e => setMedicalHistory({...medicalHistory, chronic_diseases: e.target.value})}
               />
             </div>
 
-            <div className="form-group">
-              <label>Histórico Familiar e Propensões</label>
+            <div className="form-group" style={{ marginTop: '24px' }}>
+              <label>Histórico Familiar</label>
               <textarea 
                 className="glass-input unified-textarea"
-                placeholder="Ex: Pai diabético tipo 2, avô paterno infartou aos 60 anos..."
+                placeholder="Ex: Pai diabético tipo 2..."
                 value={medicalHistory.family_history}
                 onChange={e => setMedicalHistory({...medicalHistory, family_history: e.target.value})}
               />
