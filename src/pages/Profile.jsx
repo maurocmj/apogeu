@@ -143,11 +143,11 @@ const Profile = () => {
 
   return (
     <div className="module-container profile-container">
-      <header className="page-header">
-        <h1 className="neon-text" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Target size={32} color="var(--primary)" /> Perfil e Metas
+      <header className="page-header" style={{ marginBottom: '40px' }}>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '24px', fontWeight: '400', letterSpacing: '-0.5px', margin: 0 }}>
+          <Target size={24} color="#fff" /> Perfil e Metas
         </h1>
-        <p>Afinamento do Gêmeo Digital e Memória Base dos Agentes</p>
+        <p style={{ color: '#888', fontSize: '14px', marginTop: '8px' }}>Afinamento do Gêmeo Digital e Memória Base</p>
       </header>
 
       {message.text && (
@@ -159,17 +159,17 @@ const Profile = () => {
 
       <div className="profile-grid">
         {/* Lado Esquerdo: Objetivos */}
-        <div className="glass profile-card hover-glow">
+        <div className="profile-card">
           <div className="card-header">
-            <div className="icon-wrapper primary-glow">
-              <Sparkles size={24} color="var(--primary)" />
+            <div className="icon-wrapper">
+              <Sparkles size={20} color="#fff" />
             </div>
             <h2>Definição de Objetivo</h2>
           </div>
           
           <div className="card-body">
             <div className="form-group">
-              <label>1. Categorias Principais (Múltipla escolha)</label>
+              <label>Categorias Principais (Múltipla escolha)</label>
               <div className="pills-container">
               {categories.map(cat => {
                 const isActive = (goal.goal_type || '').includes(cat.id);
@@ -178,16 +178,6 @@ const Profile = () => {
                     key={cat.id}
                     onClick={() => toggleCategory(cat.id)}
                     className={`pill-btn ${isActive ? 'active' : ''}`}
-                    style={{
-                      background: isActive ? 'rgba(0, 229, 255, 0.1)' : 'rgba(0, 0, 0, 0.4)',
-                      border: `1px solid ${isActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.1)'}`,
-                      color: isActive ? 'var(--primary)' : 'var(--text-muted)',
-                      padding: '8px 16px',
-                      borderRadius: '20px',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
                   >
                     {cat.label}
                   </button>
@@ -197,32 +187,31 @@ const Profile = () => {
           </div>
 
           <div className="form-group">
-            <label>2. Detalhamento do seu Objetivo</label>
+            <label>Detalhamento do seu Objetivo</label>
             <textarea 
               className="glass-input unified-textarea"
-              placeholder="Descreva aqui o contexto. Ex: Escolhi Emagrecimento porque quero baixar meu BF para 12% sem perder massa magra, mas estou com um leve incômodo no joelho..."
+              placeholder="Descreva aqui o contexto..."
               value={goal.description}
               onChange={e => setGoal({...goal, description: e.target.value})}
             />
             <div className="input-hint">
-              <Target size={16} /> 
-              <span>Os agentes de I.A. vão ler isso para adaptar sua dieta e treinos.</span>
+              <span>Os agentes de I.A. vão ler isso para adaptar sua rotina.</span>
             </div>
           </div>
           </div>
         </div>
 
         {/* Lado Direito: Anamnese */}
-        <div className="glass profile-card hover-glow">
+        <div className="profile-card">
           <div className="card-header" style={{ justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div className="icon-wrapper accent-glow">
-                <Dna size={24} color="var(--accent)" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="icon-wrapper">
+                <Dna size={20} color="#fff" />
               </div>
               <h2>Anamnese & Genética</h2>
             </div>
             {medicalHistory.filled_by_ai && (
-              <span style={{ fontSize: '11px', background: 'rgba(189, 0, 255, 0.1)', border: '1px solid rgba(189, 0, 255, 0.3)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontWeight: '500' }}>
+              <span style={{ fontSize: '11px', color: '#888', padding: '4px 8px', border: '1px solid #333', borderRadius: '4px' }}>
                 Preenchido por I.A.
               </span>
             )}
