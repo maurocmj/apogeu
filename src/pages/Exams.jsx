@@ -57,6 +57,85 @@ const Exams = () => {
     });
   }, []);
 
+  // Função reutilizável de processamento via IA (Parser + Medical Agent)
+  // DEVE ficar ANTES de fetchExams para evitar erro de referência
+  const processExam = async (examId, reportContent, examTitle = 'Laudo Médico') => {
+    const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
+
+    // 1. Busca Prompt do Parser
+    const { data: promptData } = await supabase.from('agent_prompts').select('system_prompt').eq('agent_role', 'ExamParser').single();
+    const parserPrompt = promptData?.system_prompt || "Extraia os dados em JSON contendo exam_title, laboratory_name, collection_date e biomarkers.";
+
+    // 2. Chama OpenAI (Parser)
+    const parserRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: parserPrompt },
+          { role: "user", content: `Laudo Médico:\n${reportContent}\n\nExtraia os resultados num formato JSON válido. Apenas o JSON.` }
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
+    const parserJson = await parserRes.json();
+    const parsedData = JSON.parse(parserJson.choices[0].message.content || "{}");
+
+    // 3. Atualiza Exame com Biomarcadores
+    await supabase.from('medical_exams').update({ 
+      biomarkers: parsedData.biomarkers || {}, 
+      laboratory_name: parsedData.laboratory_name || null,
+      exam_type: parsedData.exam_title || examTitle,
+      status: 'processed' 
+    }).eq('id', examId);
+
+    // 4. Busca Prompt do Medical Agent e Anamnese
+    const { data: medPromptData } = await supabase.from('agent_prompts').select('system_prompt').eq('agent_role', 'Medical').single();
+    const { data: medHistory } = await supabase.from('medical_history').select('*').eq('user_id', userId).single();
+    const { data: goalData } = await supabase.from('user_goals').select('*').eq('user_id', userId).eq('is_active', true).single();
+    
+    const agentPrompt = medPromptData?.system_prompt || "Você é um agente médico.";
+    const promptContext = `
+      Objetivo: ${goalData?.goal_type || 'Geral'} - ${goalData?.description || ''}
+      Anamnese: ${JSON.stringify(medHistory?.baseline_data || {})}
+      Biomarcadores: ${JSON.stringify(parsedData.biomarkers || {})}
+      Analise os biomarcadores e gere um JSON com "chat_message", "action_plan" (array de strings) e "delegations" (array de objetos com agent_role e instructions).
+    `;
+
+    // 5. Chama OpenAI (Medical Agent)
+    const agentRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: agentPrompt },
+          { role: "user", content: promptContext }
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
+    const agentJson = await agentRes.json();
+    const insights = JSON.parse(agentJson.choices[0].message.content || "{}");
+
+    // 6. Atualiza Exame com Insights
+    await supabase.from('medical_exams').update({ ai_insights: insights }).eq('id', examId);
+
+    // 7. Delegações
+    if (insights.delegations && Array.isArray(insights.delegations)) {
+      for (const delegation of insights.delegations) {
+        await supabase.from('agent_insights').insert({
+          user_id: userId,
+          agent_role: delegation.agent_role,
+          context: 'medical_exam_crossover',
+          content: delegation.instructions,
+          status: 'pending'
+        });
+      }
+    }
+  };
+
   const fetchExams = async (uid) => {
     const { data } = await supabase
       .from('medical_exams')
@@ -182,83 +261,7 @@ const Exams = () => {
     }
   };
 
-  // Função reutilizável de processamento via IA (Parser + Medical Agent)
-  const processExam = async (examId, reportContent, examTitle = 'Laudo Médico') => {
-    const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
-
-    // 1. Busca Prompt do Parser
-    const { data: promptData } = await supabase.from('agent_prompts').select('system_prompt').eq('agent_role', 'ExamParser').single();
-    const parserPrompt = promptData?.system_prompt || "Extraia os dados em JSON contendo exam_title, laboratory_name, collection_date e biomarkers.";
-
-    // 2. Chama OpenAI (Parser)
-    const parserRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: parserPrompt },
-          { role: "user", content: `Laudo Médico:\n${reportContent}\n\nExtraia os resultados num formato JSON válido. Apenas o JSON.` }
-        ],
-        response_format: { type: "json_object" }
-      })
-    });
-    const parserJson = await parserRes.json();
-    const parsedData = JSON.parse(parserJson.choices[0].message.content || "{}");
-
-    // 3. Atualiza Exame com Biomarcadores
-    await supabase.from('medical_exams').update({ 
-      biomarkers: parsedData.biomarkers || {}, 
-      laboratory_name: parsedData.laboratory_name || null,
-      exam_type: parsedData.exam_title || examTitle,
-      status: 'processed' 
-    }).eq('id', examId);
-
-    // 4. Busca Prompt do Medical Agent e Anamnese
-    const { data: medPromptData } = await supabase.from('agent_prompts').select('system_prompt').eq('agent_role', 'Medical').single();
-    const { data: medHistory } = await supabase.from('medical_history').select('*').eq('user_id', userId).single();
-    const { data: goalData } = await supabase.from('user_goals').select('*').eq('user_id', userId).eq('is_active', true).single();
-    
-    const agentPrompt = medPromptData?.system_prompt || "Você é um agente médico.";
-    const promptContext = `
-      Objetivo: ${goalData?.goal_type || 'Geral'} - ${goalData?.description || ''}
-      Anamnese: ${JSON.stringify(medHistory?.baseline_data || {})}
-      Biomarcadores: ${JSON.stringify(parsedData.biomarkers || {})}
-      Analise os biomarcadores e gere um JSON com "chat_message", "action_plan" (array de strings) e "delegations" (array de objetos com agent_role e instructions).
-    `;
-
-    // 5. Chama OpenAI (Medical Agent)
-    const agentRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openaiKey}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: agentPrompt },
-          { role: "user", content: promptContext }
-        ],
-        response_format: { type: "json_object" }
-      })
-    });
-    const agentJson = await agentRes.json();
-    const insights = JSON.parse(agentJson.choices[0].message.content || "{}");
-
-    // 6. Atualiza Exame com Insights
-    await supabase.from('medical_exams').update({ ai_insights: insights }).eq('id', examId);
-
-    // 7. Delegações
-    if (insights.delegations && Array.isArray(insights.delegations)) {
-      for (const delegation of insights.delegations) {
-        await supabase.from('agent_insights').insert({
-          user_id: userId,
-          agent_role: delegation.agent_role,
-          context: 'medical_exam_crossover',
-          content: delegation.instructions,
-          status: 'pending'
-        });
-      }
-    }
-  };
+  // processExam já foi declarado acima (antes de fetchExams)
 
   // Reprocessa um exame travado usando o medical_report já salvo no banco
   const handleReprocess = async (exam) => {
