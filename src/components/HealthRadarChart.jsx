@@ -1,14 +1,13 @@
 import React, { useMemo } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
-// Mapping biomarkers to the 6 agreed systems
 const categoryMapping = {
-  'Cardiovascular': ['colesterol', 'hdl', 'ldl', 'triglicerideos', 'vldl', 'apolipoproteina'],
-  'Metabólico': ['glicose', 'insulina', 'glicada', 'acido_urico', 'hba1c'],
-  'Neurológico': ['cortisol', 'b12', 'sodio', 'potassio', 'tsh', 't4'],
-  'Imunológico': ['leucocitos', 'linfocitos', 'pcr', 'plaquetas', 'proteina_c'],
-  'Órgãos Vitais': ['creatinina', 'ureia', 'tgo', 'tgp', 'gama', 'bilirrubina'],
-  'Estrutural': ['calcio', 'vitamina_d', 'ferro', 'ferritina', 'magnesio', 'testosterona'],
+  'Cardiovascular': ['colesterol', 'hdl', 'ldl', 'triglicerideos', 'triglicerides', 'vldl', 'apolipoproteina', 'pressao', 'pa', 'frequencia', 'coracao', 'eletro', 'eco'],
+  'Metabólico': ['glicose', 'glicemia', 'insulina', 'glicada', 'acido_urico', 'hba1c', 'peso', 'imc', 'gordura', 'tireoide', 'tsh', 't4', 'metabolismo'],
+  'Neurológico': ['cortisol', 'b12', 'sodio', 'potassio', 'sono', 'estresse', 'ansiedade', 'cognitivo'],
+  'Imunológico': ['leucocitos', 'linfocitos', 'pcr', 'plaquetas', 'proteina_c', 'hiv', 'htlv', 'treponema', 'hepatite', 'hbsag', 'hcv', 'imunidade'],
+  'Órgãos Vitais': ['creatinina', 'ureia', 'tgo', 'tgp', 'gama', 'bilirrubina', 'prostata', 'bexiga', 'hepatico', 'rim', 'pulmao', 'figado', 'vesical'],
+  'Estrutural': ['calcio', 'vitamina_d', 'ferro', 'ferritina', 'magnesio', 'testosterona', 'osso', 'musculo', 'carcinoma', 'pele', 'varicocele', 'lesao', 'tumor', 'massa'],
 };
 
 const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index, hasData }) => {
@@ -45,7 +44,8 @@ const HealthRadarChart = ({ exams = [] }) => {
         Object.entries(exam.biomarkers).forEach(([key, value]) => {
           if (!allBiomarkers[key]) {
             const status = typeof value === 'object' && value !== null ? value.status : 'normal';
-            allBiomarkers[key] = status;
+            const realVal = typeof value === 'object' && value !== null ? value.value : value;
+            allBiomarkers[key] = { status, value: realVal };
           }
         });
       }
@@ -59,10 +59,16 @@ const HealthRadarChart = ({ exams = [] }) => {
       let penalty = 0;
       
       relatedKeys.forEach(bk => {
-        const foundKey = Object.keys(allBiomarkers).find(k => k.toLowerCase().includes(bk));
+        const foundKey = Object.keys(allBiomarkers).find(k => {
+          const valObj = allBiomarkers[k];
+          const keyMatch = k.toLowerCase().includes(bk);
+          const valMatch = typeof valObj.value === 'string' && valObj.value.toLowerCase().includes(bk);
+          return keyMatch || valMatch;
+        });
+        
         if (foundKey) {
           foundCount++;
-          const status = (allBiomarkers[foundKey] || 'normal').toLowerCase();
+          const status = (allBiomarkers[foundKey].status || 'normal').toLowerCase();
           
           if (status.includes('attention') || status.includes('warning') || status.includes('alterado') || status.includes('atencao') || status.includes('atenção')) {
             penalty += 1;

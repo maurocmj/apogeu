@@ -115,24 +115,18 @@ const Integrations = () => {
   }
 
   return (
-    <div className="module-container integrations-container">
-      <header className="page-header">
-        <h1 className="neon-text" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link2 size={32} color="var(--primary)" /> Integrações & Dispositivos
-        </h1>
-        <p>Conecte seus aplicativos de saúde e wearables ao ecossistema APOGEU</p>
-      </header>
-
+    <div className="module-container integrations-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: '24px 0' }}>
+      
       {message.text && (
-        <div className={`toast-notification ${message.type}`}>
+        <div className={`toast-notification ${message.type}`} style={{ marginBottom: '24px', width: '100%', maxWidth: '540px' }}>
           {message.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
           <span>{message.text}</span>
         </div>
       )}
 
-      <div className="integrations-grid">
+      <div style={{ width: '100%', maxWidth: '540px' }}>
         {/* Card do Strava */}
-        <div className={`glass integration-card hover-glow ${connection ? 'connected' : ''}`}>
+        <div className={`glass integration-card hover-glow ${connection ? 'connected' : ''}`} style={{ width: '100%', margin: 0 }}>
           <div className="card-header-row">
             <div className="brand-badge-wrapper">
               {/* Logotipo estilizado do Strava (Laranja) */}
@@ -146,10 +140,10 @@ const Integrations = () => {
           </div>
 
           <div className="card-body">
-            <h3>Strava Integration</h3>
+            <h3>Strava</h3>
             <p>
               Sincronize automaticamente todas as suas atividades de corrida, ciclismo, musculação e treinos gerais. 
-              Os dados de distância, elevação, tempo e frequência cardíaca serão consumidos diretamente pelo nosso 
+              Os dados serão consumidos diretamente pelo nosso 
               <strong> Personal Agent IA</strong> para refinar suas metas de treino e descanso.
             </p>
 
@@ -171,15 +165,11 @@ const Integrations = () => {
             ) : (
               <div className="features-list">
                 <div className="feature-item">
-                  <CheckCircle size={14} color="#ef4444" />
-                  <span>Sincronização bidirecional de atividades aérobicas e anaeróbicas</span>
+                  <CheckCircle size={14} color="#fc4c02" />
+                  <span>Sincronização automática de treinos</span>
                 </div>
                 <div className="feature-item">
-                  <CheckCircle size={14} color="#ef4444" />
-                  <span>Acesso detalhado a zonas de batimento cardíaco e altimetria</span>
-                </div>
-                <div className="feature-item">
-                  <CheckCircle size={14} color="#ef4444" />
+                  <CheckCircle size={14} color="#fc4c02" />
                   <span>Cálculo automático de fadiga neuromuscular por IA</span>
                 </div>
               </div>
@@ -211,37 +201,6 @@ const Integrations = () => {
                 </button>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* Placeholder para outras integrações futuras */}
-        <div className="glass integration-card disabled">
-          <div className="card-header-row">
-            <div className="brand-badge-wrapper">
-              <div className="brand-logo apple-health-logo">
-                <span>Apple Health</span>
-              </div>
-              <span className="status-badge coming-soon">Em Breve</span>
-            </div>
-          </div>
-          <div className="card-body">
-            <h3>Apple Health / Watch</h3>
-            <p>Sincronize sono, passos diários, frequência cardíaca em repouso e variabilidade (HRV) diretamente do seu Apple Watch.</p>
-          </div>
-        </div>
-
-        <div className="glass integration-card disabled">
-          <div className="card-header-row">
-            <div className="brand-badge-wrapper">
-              <div className="brand-logo garmin-logo">
-                <span>Garmin</span>
-              </div>
-              <span className="status-badge coming-soon">Em Breve</span>
-            </div>
-          </div>
-          <div className="card-body">
-            <h3>Garmin Connect</h3>
-            <p>Importe dinamicamente as métricas de performance avançada, carga de treino (Training Load) e VO2 Máx.</p>
           </div>
         </div>
       </div>
