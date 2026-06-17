@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, FileText, Search, ExternalLink, ShieldAlert, Target, Loader2, Save, Info, Download, ChevronDown, ChevronUp, Activity, Heart, Calendar, AlertTriangle } from 'lucide-react';
+import { Upload, FileText, Search, ExternalLink, ShieldAlert, Target, Loader2, Save, Info, Download, ChevronDown, ChevronUp, Activity, Heart, Calendar, AlertTriangle, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import ChatWidget from '../components/ChatWidget';
 import ActionPlanCard from '../components/ActionPlanCard';
@@ -64,12 +64,22 @@ const Exams = () => {
       .eq('user_id', uid)
       .order('collection_date', { ascending: false });
     if (data) {
-      // Filtra os exames para não exibir os que ficaram presos eternamente em "processing"
-      const validExams = data.filter(exam => exam.status !== 'processing');
-      setExams(validExams);
-      if (validExams.length > 0) {
-        setExpandedExams({ [validExams[0].id]: true }); // expand the latest by default
+      setExams(data);
+      if (data.length > 0) {
+        setExpandedExams({ [data[0].id]: true }); // expand the latest by default
       }
+    }
+  };
+
+  const handleDelete = async (examId) => {
+    if (!window.confirm("Tem certeza que deseja excluir este exame?")) return;
+    
+    // Deleta do DB
+    const { error } = await supabase.from('medical_exams').delete().eq('id', examId);
+    if (!error) {
+      setExams(exams.filter(e => e.id !== examId));
+    } else {
+      alert("Erro ao excluir o exame: " + error.message);
     }
   };
 
@@ -433,6 +443,13 @@ const Exams = () => {
                               <Download size={18} color="var(--primary)" />
                             </a>
                           )}
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDelete(exam.id); }} 
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} 
+                            title="Excluir Exame"
+                          >
+                            <Trash2 size={18} color="#ef4444" />
+                          </button>
                           {expandedExams[exam.id] ? <ChevronUp size={18} color="var(--text-muted)" /> : <ChevronDown size={18} color="var(--text-muted)" />}
                         </div>
                       </td>
