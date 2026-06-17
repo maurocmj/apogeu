@@ -46,9 +46,12 @@ const HealthScoreTimelineChart = ({ exams = [] }) => {
       }
 
       const dateObj = new Date(exam.collection_date);
+      const name = `${dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')} ${dateObj.getFullYear().toString().slice(2)}`;
+      
       const dataPoint = { 
         time: dateObj.getTime(), 
-        displayDate: dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
+        displayDate: name,
+        name: name,
         Geral: 0 
       };
       
@@ -145,11 +148,7 @@ const HealthScoreTimelineChart = ({ exams = [] }) => {
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
           
           <XAxis 
-            dataKey="time" 
-            type="number"
-            scale="time"
-            domain={['dataMin', 'dataMax']}
-            tickFormatter={formatDateTick}
+            dataKey="name" 
             stroke="var(--text-muted)" 
             fontSize={11}
             tickLine={false}
@@ -162,12 +161,7 @@ const HealthScoreTimelineChart = ({ exams = [] }) => {
             axisLine={false}
           />
           <Tooltip
-            labelFormatter={(label, payload) => {
-              if (payload && payload.length > 0 && payload[0].payload) {
-                return payload[0].payload.displayDate;
-              }
-              return formatDateTick(label);
-            }}
+            labelFormatter={(label) => label}
             contentStyle={{
               backgroundColor: 'rgba(22, 25, 32, 0.95)',
               border: '1px solid rgba(255,255,255,0.1)',
