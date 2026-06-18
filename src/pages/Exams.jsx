@@ -88,13 +88,30 @@ const Exams = () => {
     const parserJson = await parserRes.json();
     const parsedData = JSON.parse(parserJson.choices[0].message.content || "{}");
 
-    // 3. Atualiza Exame com Biomarcadores
+    // 3. Atualiza Exame com Biomarcadores + data real do exame
+    const parsedDate = parsedData.collection_date
+      ? (() => {
+          // Aceita formatos: YYYY-MM-DD, DD/MM/YYYY, DD/MM/YY
+          let d = parsedData.collection_date.trim();
+          // Converte DD/MM/YYYY ou DD/MM/YY → YYYY-MM-DD
+          const brMatch = d.match(/^(\d{2})\/(\d{2})\/(\d{2,4})$/);
+          if (brMatch) {
+            const year = brMatch[3].length === 2 ? `20${brMatch[3]}` : brMatch[3];
+            d = `${year}-${brMatch[2]}-${brMatch[1]}`;
+          }
+          const parsed = new Date(d);
+          return isNaN(parsed.getTime()) ? null : d;
+        })()
+      : null;
+
     await supabase.from('medical_exams').update({ 
       biomarkers: parsedData.biomarkers || {}, 
       laboratory_name: parsedData.laboratory_name || null,
       exam_type: parsedData.exam_title || examTitle,
+      ...(parsedDate && { collection_date: parsedDate }),
       status: 'processed' 
     }).eq('id', examId);
+
 
     // 4. Busca Prompt do Medical Agent e Anamnese
     const { data: medPromptData } = await supabase.from('agent_prompts').select('system_prompt').eq('agent_role', 'Medical').single();
