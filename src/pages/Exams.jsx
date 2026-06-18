@@ -47,6 +47,9 @@ const Exams = () => {
       if (session) {
         setUserId(session.user.id);
         fetchExams(session.user.id);
+        // Carrega análise salva imediatamente (sem esperar API)
+        const cached = localStorage.getItem(`evolutionSummary_${session.user.id}`);
+        if (cached) setEvolutionSummary(cached);
       }
     });
 
@@ -159,7 +162,7 @@ const Exams = () => {
     }
   };
 
-  // Gera análise de evolução clínica ao carregar/atualizar exames
+  // Gera análise de evolução clínica — só quando um novo exame é adicionado
   useEffect(() => {
     const processedExams = exams.filter(e => e.status === 'processed' && e.biomarkers);
     if (processedExams.length === 0) return;
@@ -168,7 +171,6 @@ const Exams = () => {
       setLoadingEvolution(true);
       try {
         const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
-        // Usa TODOS os exames, ordenados do mais antigo ao mais recente
         const allExamsSorted = [...processedExams].reverse();
         const summary = allExamsSorted
           .map(e => `[${new Date(e.collection_date).toLocaleDateString('pt-BR')}] ${e.exam_type}: ${JSON.stringify(e.biomarkers).slice(0, 300)}`)
@@ -187,8 +189,11 @@ const Exams = () => {
           })
         });
         const data = await res.json();
-        if (data.choices?.[0]?.message?.content) {
-          setEvolutionSummary(data.choices[0].message.content);
+        const text = data.choices?.[0]?.message?.content;
+        if (text) {
+          setEvolutionSummary(text);
+          // Persiste para aparecer sempre ao abrir o app
+          if (userId) localStorage.setItem(`evolutionSummary_${userId}`, text);
         }
       } catch (err) {
         console.error('Erro ao gerar análise de evolução:', err);
