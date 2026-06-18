@@ -251,18 +251,40 @@ const Exams = () => {
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0 || !userId) return;
-    // Limpa o input para permitir re-selecionar o mesmo arquivo
     e.target.value = '';
     setUploading(true);
-    try {
-      const newExams = await Promise.all(files.map(f => uploadAndProcessFile(f)));
-      setExams(prev => [...newExams, ...prev]);
-    } catch (err) {
-      console.error('Erro no upload:', err);
-      alert('Erro ao enviar exame: ' + (err.message || JSON.stringify(err)));
-    } finally {
-      setUploading(false);
+
+    const duplicates = [];
+    const added = [];
+
+    await Promise.all(files.map(async (f) => {
+      try {
+        const exam = await uploadAndProcessFile(f);
+        added.push(exam);
+      } catch (err) {
+        if (err.message?.includes('já foi importado')) {
+          duplicates.push(f.name);
+        } else {
+          console.error('Erro no upload:', err);
+          alert('Erro ao enviar exame: ' + (err.message || JSON.stringify(err)));
+        }
+      }
+    }));
+
+    if (added.length > 0) {
+      setExams(prev => [...added, ...prev]);
     }
+    if (duplicates.length > 0) {
+      alert(`⚠️ Os seguintes exames já existem e foram ignorados:\n\n${duplicates.map(n => `• ${n}`).join('\n')}`);
+    }
+
+    setUploading(false);
+  };
+
+  // Gera fingerprint do texto extraído (início + fim) para detectar duplicatas
+  const generateFingerprint = (text) => {
+    const cleaned = text.replace(/\s+/g, ' ').trim();
+    return cleaned.slice(0, 300) + '||' + cleaned.slice(-100);
   };
 
   // Processa um único arquivo e retorna o exame criado
@@ -276,6 +298,15 @@ const Exams = () => {
     }
 
     reportContent = await extractTextFromPDF(file);
+
+    // ── Detecção de duplicatas ──
+    const fingerprint = generateFingerprint(reportContent);
+    const isDuplicate = exams.some(e =>
+      e.medical_report && generateFingerprint(e.medical_report) === fingerprint
+    );
+    if (isDuplicate) {
+      throw new Error(`⚠️ "${file.name}" já foi importado anteriormente. Importação ignorada.`);
+    }
 
     const fileExt = file.name.split('.').pop();
     const filePath = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
