@@ -40,7 +40,7 @@ const MainLayout = () => {
   const menuItems = [
     { path: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Início', developed: true },
     { path: '/esportivo', icon: <Dumbbell size={20} />, label: 'Esportivo', developed: false },
-    { path: '/monitoramento', icon: <Moon size={20} />, label: 'Monitoramento', developed: false },
+    { path: '/monitoramento', icon: <Moon size={20} />, label: 'Monitoramento', developed: true },
     { path: '/ingestao', icon: <Utensils size={20} />, label: 'Ingestão', developed: false },
     { path: '/body', icon: <User size={20} />, label: 'Body', developed: false },
     { path: '/perfil', icon: <Target size={20} />, label: 'Perfil e Metas', developed: true },

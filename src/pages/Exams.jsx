@@ -246,7 +246,7 @@ const Exams = () => {
       setLoadingInfo(prev => ({ ...prev, [key]: true }));
       try {
         const res = await supabase.functions.invoke('biomarker-info-service', {
-          body: { biomarkerKey: key, openaiKey: import.meta.env.VITE_OPENAI_API_KEY }
+          body: { biomarkerKey: key }
         });
         if (res.error) throw res.error;
         
