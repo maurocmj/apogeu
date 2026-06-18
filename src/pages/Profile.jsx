@@ -172,7 +172,8 @@ const Profile = () => {
       )}
 
       <div className="profile-grid">
-        {/* Lado Esquerdo: Objetivos */}
+
+        {/* Card Esquerdo: Objetivos */}
         <div className="profile-card">
           <div className="card-header">
             <div className="icon-wrapper">
@@ -180,49 +181,50 @@ const Profile = () => {
             </div>
             <h2>Definição de Objetivo</h2>
           </div>
-          
+
           <div className="card-body">
             <div className="form-group">
               <label>Categorias Principais (Múltipla escolha)</label>
               <div className="pills-container">
-              {categories.map(cat => {
-                const isActive = (goal.goal_type || '').includes(cat.id);
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => toggleCategory(cat.id)}
-                    className={`pill-btn ${isActive ? 'active' : ''}`}
-                  >
-                    {cat.label}
-                  </button>
-                );
-              })}
+                {categories.map(cat => {
+                  const isActive = (goal.goal_type || '').includes(cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => toggleCategory(cat.id)}
+                      className={`pill-btn ${isActive ? 'active' : ''}`}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          <div className="form-group">
-            <label>Detalhamento do seu Objetivo</label>
-            <textarea 
-              className="glass-input unified-textarea"
-              placeholder="Descreva aqui o contexto..."
-              value={goal.description}
-              onChange={e => setGoal({...goal, description: e.target.value})}
-            />
-            <div className="input-hint">
-              <span>Os agentes de I.A. vão ler isso para adaptar sua rotina.</span>
+            <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <label>Detalhamento do seu Objetivo</label>
+              <textarea
+                className="glass-input unified-textarea"
+                style={{ flex: 1, minHeight: '120px', resize: 'none' }}
+                placeholder="Descreva aqui o contexto..."
+                value={goal.description}
+                onChange={e => setGoal({...goal, description: e.target.value})}
+              />
+              <div className="input-hint">
+                <span>Os agentes de I.A. vão ler isso para adaptar sua rotina.</span>
+              </div>
             </div>
-          </div>
           </div>
         </div>
 
-        {/* Lado Direito: Anamnese */}
+        {/* Card Direito: Anamnese */}
         <div className="profile-card">
           <div className="card-header" style={{ justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div className="icon-wrapper">
                 <Dna size={20} color="#fff" />
               </div>
-              <h2>Anamnese & Genética</h2>
+              <h2>Anamnese &amp; Genética</h2>
             </div>
             {medicalHistory.filled_by_ai && (
               <span style={{ fontSize: '11px', color: '#888', padding: '4px 8px', border: '1px solid #333', borderRadius: '4px' }}>
@@ -231,10 +233,16 @@ const Profile = () => {
             )}
           </div>
 
-          <div className="card-body">
+          <div className="card-body" style={{
+            flex: 1,
+            display: 'grid',
+            gridTemplateRows: 'auto 1fr',
+            gap: '24px',
+            minHeight: 0
+          }}>
             <div className="form-group">
               <label>Alergias ou Intolerâncias Sensíveis</label>
-              <input 
+              <input
                 type="text"
                 className="glass-input"
                 placeholder="Ex: Intolerância à lactose..."
@@ -242,27 +250,39 @@ const Profile = () => {
                 onChange={e => setMedicalHistory({...medicalHistory, allergies: e.target.value})}
               />
             </div>
-            <div className="form-group" style={{ marginTop: '24px' }}>
-              <label>Condições Crônicas / Lesões</label>
-              <textarea 
-                className="glass-input unified-textarea"
-                placeholder="Ex: Asma grau 1, hipertensão..."
-                value={medicalHistory.chronic_diseases}
-                onChange={e => setMedicalHistory({...medicalHistory, chronic_diseases: e.target.value})}
-              />
-            </div>
 
-            <div className="form-group" style={{ marginTop: '24px' }}>
-              <label>Histórico Familiar</label>
-              <textarea 
-                className="glass-input unified-textarea"
-                placeholder="Ex: Pai diabético tipo 2..."
-                value={medicalHistory.family_history}
-                onChange={e => setMedicalHistory({...medicalHistory, family_history: e.target.value})}
-              />
+            {/* Grid de dois textareas — cresce para preencher o card */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '20px',
+              minHeight: 0
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
+                <label style={{ color: '#888', fontSize: '13px', flexShrink: 0 }}>Condições Crônicas / Lesões</label>
+                <textarea
+                  className="glass-input unified-textarea"
+                  style={{ flex: 1, width: '100%', minHeight: '120px', boxSizing: 'border-box', resize: 'none' }}
+                  placeholder="Ex: Asma grau 1, hipertensão..."
+                  value={medicalHistory.chronic_diseases}
+                  onChange={e => setMedicalHistory({...medicalHistory, chronic_diseases: e.target.value})}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
+                <label style={{ color: '#888', fontSize: '13px', flexShrink: 0 }}>Histórico Familiar</label>
+                <textarea
+                  className="glass-input unified-textarea"
+                  style={{ flex: 1, width: '100%', minHeight: '120px', boxSizing: 'border-box', resize: 'none' }}
+                  placeholder="Ex: Pai diabético tipo 2..."
+                  value={medicalHistory.family_history}
+                  onChange={e => setMedicalHistory({...medicalHistory, family_history: e.target.value})}
+                />
+              </div>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
