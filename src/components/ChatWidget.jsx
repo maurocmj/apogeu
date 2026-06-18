@@ -60,10 +60,6 @@ const ChatWidget = ({
 
   return (
     <div className="chat-widget-container glass">
-      <div className="chat-header">
-        <Icon size={20} color={agentColor} />
-        <h3>{agentName}</h3>
-      </div>
       
       <div className="chat-messages" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {messages.map((msg, idx) => (
@@ -89,7 +85,7 @@ const ChatWidget = ({
           type="text" 
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Pergunte algo ao Cérebro..."
+          placeholder="Chat..."
         />
         <button type="submit" className="chat-send-btn">
           <Send size={16} />

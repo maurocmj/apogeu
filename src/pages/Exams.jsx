@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Upload, FileText, Search, ExternalLink, ShieldAlert, Target, Loader2, Save, Info, Download, ChevronDown, ChevronUp, Activity, Heart, Calendar, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import ChatWidget from '../components/ChatWidget';
@@ -31,7 +32,6 @@ const extractTextFromPDF = async (file) => {
 };
 
 const Exams = () => {
-  const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [exams, setExams] = useState([]);
   const [userId, setUserId] = useState(null);
@@ -39,6 +39,8 @@ const Exams = () => {
   const [loadingInfo, setLoadingInfo] = useState({});
   const [tooltip, setTooltip] = useState({ isOpen: false, key: '', content: '', x: 0, y: 0 });
   const [expandedExams, setExpandedExams] = useState({});
+  const [evolutionSummary, setEvolutionSummary] = useState('');
+  const [loadingEvolution, setLoadingEvolution] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -157,6 +159,47 @@ const Exams = () => {
     }
   };
 
+  // Gera análise de evolução clínica ao carregar/atualizar exames
+  useEffect(() => {
+    const processedExams = exams.filter(e => e.status === 'processed' && e.biomarkers);
+    if (processedExams.length === 0) return;
+
+    const generateEvolution = async () => {
+      setLoadingEvolution(true);
+      try {
+        const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
+        // Usa TODOS os exames, ordenados do mais antigo ao mais recente
+        const allExamsSorted = [...processedExams].reverse();
+        const summary = allExamsSorted
+          .map(e => `[${new Date(e.collection_date).toLocaleDateString('pt-BR')}] ${e.exam_type}: ${JSON.stringify(e.biomarkers).slice(0, 300)}`)
+          .join('\n');
+
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'Você é um médico especialista em longevidade. Analise o histórico COMPLETO de exames do paciente (do mais antigo ao mais recente) e escreva EXATAMENTE 3 frases sobre a evolução clínica. Regras obrigatórias: (1) use linguagem direta e acessível, (2) mencione tendências relevantes entre os exames, (3) seja objetivo. Retorne apenas as 3 frases, sem enumeração, sem markdown, sem quebras de linha extras.' },
+              { role: 'user', content: `Histórico completo de exames:\n${summary}` }
+            ],
+            max_tokens: 180
+          })
+        });
+        const data = await res.json();
+        if (data.choices?.[0]?.message?.content) {
+          setEvolutionSummary(data.choices[0].message.content);
+        }
+      } catch (err) {
+        console.error('Erro ao gerar análise de evolução:', err);
+      } finally {
+        setLoadingEvolution(false);
+      }
+    };
+
+    generateEvolution();
+  }, [exams.length]); // Roda toda vez que um novo exame é adicionado
+
   const handleDelete = async (examId) => {
     if (!window.confirm("Tem certeza que deseja excluir este exame?")) return;
     
@@ -199,67 +242,66 @@ const Exams = () => {
     setTooltip({ isOpen: false, key: '', content: '', x: 0, y: 0 });
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-    if (!userId) return;
-
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !userId) return;
+    // Limpa o input para permitir re-selecionar o mesmo arquivo
+    e.target.value = '';
     setUploading(true);
-
     try {
-      let reportContent = '';
-      let filePublicUrl = null;
-      let examTitle = selectedFile.name || 'Laudo de Sangue (Arquivo)';
-
-      if (selectedFile.type === 'application/pdf') {
-        reportContent = await extractTextFromPDF(selectedFile);
-        
-        const fileExt = selectedFile.name.split('.').pop();
-        const filePath = `${userId}/${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage.from('medical_exams_files').upload(filePath, selectedFile);
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage.from('medical_exams_files').getPublicUrl(filePath);
-          filePublicUrl = publicUrl;
-        }
-      } else {
-        alert("Nesta versão o leitor suporta apenas arquivos PDF.");
-        setUploading(false);
-        return;
-      }
-      
-      const { data: newExam, error: dbError } = await supabase
-        .from('medical_exams')
-        .insert({
-          user_id: userId,
-          exam_type: examTitle,
-          document_url: filePublicUrl,
-          medical_report: reportContent,
-          collection_date: new Date().toISOString(),
-          status: 'processing'
-        })
-        .select()
-        .single();
-
-      if (dbError) throw dbError;
-
-      setExams([newExam, ...exams]);
-      setSelectedFile(null);
-
-      await processExam(newExam.id, reportContent, examTitle);
-      fetchExams(userId);
-      
-    } catch (e) {
-      console.error("Erro no processamento de IA:", e);
-      alert('Erro ao processar exame: ' + (e.message || JSON.stringify(e)));
+      const newExams = await Promise.all(files.map(f => uploadAndProcessFile(f)));
+      setExams(prev => [...newExams, ...prev]);
+    } catch (err) {
+      console.error('Erro no upload:', err);
+      alert('Erro ao enviar exame: ' + (err.message || JSON.stringify(err)));
     } finally {
       setUploading(false);
     }
   };
+
+  // Processa um único arquivo e retorna o exame criado
+  const uploadAndProcessFile = async (file) => {
+    let reportContent = '';
+    let filePublicUrl = null;
+    const examTitle = file.name || 'Laudo Médico';
+
+    if (file.type !== 'application/pdf') {
+      throw new Error(`${file.name} não é um PDF válido.`);
+    }
+
+    reportContent = await extractTextFromPDF(file);
+
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage.from('medical_exams_files').upload(filePath, file);
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from('medical_exams_files').getPublicUrl(filePath);
+      filePublicUrl = publicUrl;
+    }
+
+    const { data: newExam, error: dbError } = await supabase
+      .from('medical_exams')
+      .insert({
+        user_id: userId,
+        exam_type: examTitle,
+        document_url: filePublicUrl,
+        medical_report: reportContent,
+        collection_date: new Date().toISOString(),
+        status: 'processing'
+      })
+      .select()
+      .single();
+
+    if (dbError) throw dbError;
+
+    // Processa IA em background (não bloqueia os outros arquivos)
+    processExam(newExam.id, reportContent, examTitle)
+      .then(() => fetchExams(userId))
+      .catch(err => console.error(`Erro ao processar ${file.name}:`, err));
+
+    return newExam;
+  };
+
 
   // processExam já foi declarado acima (antes de fetchExams)
 
@@ -308,244 +350,254 @@ const Exams = () => {
   const examContext = exams.map(e => `Exame: ${e.exam_type} (Data: ${new Date(e.collection_date).toLocaleDateString('pt-BR')}). Biomarcadores: ${JSON.stringify(e.biomarkers)}`).join('\n\n');
 
   return (
-    <div className="home-container" style={{ padding: 0, gridTemplateColumns: '450px 1fr', alignItems: 'stretch', marginTop: '24px' }}>
-      {/* Main Column: Radar e Visão Geral */}
-      <main className="home-main-col feed-card glass" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingBottom: '20px' }}>
-        <div>
-          <div className="feed-header" style={{ marginBottom: '16px' }}>
-            <h3>Visão Geral Clínica</h3>
+    <div style={{ padding: '0', marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* ── LINHA 1: 3 cards lado a lado ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px', alignItems: 'stretch' }}>
+
+        {/* Card 1: Visão Geral Clínica (Radar) */}
+        <div className="glass" style={{ borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px' }}>Visão Geral Clínica</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>Mapa de sistemas</p>
+            </div>
             <span className="badge">Atualizado {lastExamDate !== 'N/A' ? lastExamDate : 'hoje'}</span>
           </div>
-          <div className="radar-chart-wrapper" style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '16px' }}>
-            <div style={{ width: '100%', maxWidth: '320px' }}>
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ width: '100%', maxWidth: '280px' }}>
               <HealthRadarChart exams={exams} />
             </div>
           </div>
-        </div>
-
-        {/* Resumo de Dados Integrado */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(3, 1fr)', 
-          gap: '12px', 
-          borderTop: '1px solid rgba(255, 255, 255, 0.05)', 
-          paddingTop: '16px'
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '8px', borderLeft: '2px solid rgba(0, 229, 255, 0.5)' }}>
-            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Checkup</span>
-            <span style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>{lastExamDate}</span>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '8px', borderLeft: '2px solid rgba(16, 185, 129, 0.5)' }}>
-            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Indicadores</span>
-            <span style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>{totalBiomarkers}</span>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '8px', borderLeft: '2px solid rgba(245, 158, 11, 0.5)' }}>
-            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Atenção</span>
-            <span style={{ fontSize: '12px', fontWeight: '600', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title="Risco Metabólico">Metabólico</span>
-          </div>
-        </div>
-      </main>
-
-      {/* Right Column: Timeline Score Chart */}
-      <aside className="home-right-col feed-card glass" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        <div className="feed-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3 style={{ margin: 0 }}>Histórico de Score Clínico</h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>Evolução do Score Geral e Sistemas</p>
-          </div>
-        </div>
-        <HealthScoreTimelineChart exams={exams} />
-      </aside>
-
-      {/* Protocolo Clínico & Medical Agent Chat (Side-by-side below) */}
-      <section style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', marginTop: '24px', marginBottom: '8px' }}>
-        <div>
-          {actionPlanItems.length > 0 ? (
-            <ActionPlanCard 
-              title="Protocolo Clínico"
-              icon={Target}
-              color="#10b981"
-              items={actionPlanItems}
-            />
-          ) : (
-            <div className="glass" style={{ padding: '24px', borderRadius: '12px', height: '100%', minHeight: '320px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-              <Target size={40} color="var(--text-muted)" style={{ marginBottom: '12px', opacity: 0.5 }} />
-              <strong style={{ color: 'white', display: 'block', marginBottom: '8px' }}>Nenhum Protocolo Ativo</strong>
-              <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0, maxWidth: '280px' }}>Envie um laudo de exame na tabela abaixo para que a I.A. gere o seu plano de ação clínico.</p>
+          {/* Mini stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px', marginTop: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '8px', borderLeft: '2px solid rgba(0,229,255,0.5)' }}>
+              <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Checkup</span>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>{lastExamDate}</span>
             </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '8px', borderLeft: '2px solid rgba(16,185,129,0.5)' }}>
+              <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Indicadores</span>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>{totalBiomarkers}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '8px', borderLeft: '2px solid rgba(245,158,11,0.5)' }}>
+              <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.5px' }}>Atenção</span>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Metabólico</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Histórico de Score */}
+        <div className="glass" style={{ borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px' }}>Histórico de Score Clínico</h3>
+            <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>Evolução do Score Geral e Sistemas</p>
+          </div>
+          <div style={{ flex: 1 }}>
+            <HealthScoreTimelineChart exams={exams} />
+          </div>
+
+          {/* Análise de Evolução Clínica — gerada pela IA */}
+          <div style={{
+            marginTop: '16px',
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            paddingTop: '16px'
+          }}>
+            {loadingEvolution ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
+                <Loader2 size={13} className="animate-spin" color="var(--primary)" />
+                <span style={{ fontSize: '12px' }}>Analisando evolução...</span>
+              </div>
+            ) : evolutionSummary ? (
+              <div style={{ animation: 'fadeIn 0.5s ease' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  <span style={{
+                    fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.8px',
+                    color: 'var(--primary)', fontWeight: '700'
+                  }}>Análise do Agente</span>
+                  <span style={{
+                    width: '6px', height: '6px', borderRadius: '50%',
+                    background: 'var(--primary)', boxShadow: '0 0 6px var(--primary)',
+                    animation: 'pulse 2s infinite'
+                  }} />
+                </div>
+                <p style={{
+                  margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.75)',
+                  lineHeight: '1.65', fontStyle: 'italic'
+                }}>"{evolutionSummary}"</p>
+              </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Importe exames para gerar a análise de evolução.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Card 3: Medical Agent + Plano de Ação */}
+        <div className="glass" style={{ borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Heart size={16} color="#10b981" /> Medical Agent
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>Análise clínica personalizada</p>
+            </div>
+          </div>
+
+          {/* Protocolo Clínico — abre modal ao clicar */}
+          {actionPlanItems.length > 0 && (
+            <ActionPlanModal items={actionPlanItems} />
           )}
-        </div>
-        <div>
-          <ChatWidget 
-            agentName="Medical Agent" 
-            icon={Heart} 
-            agentColor="#10b981" 
-            initialMessage={initialMessage} 
-            context={examContext}
-          />
-        </div>
-      </section>
 
-      {/* Tabela de Linha do Tempo Clínica */}
-      <section style={{ gridColumn: '1 / -1', marginTop: '16px', marginBottom: '32px' }}>
-        <div className="glass" style={{ borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Activity color="var(--primary)" size={20} /> Histórico de Exames
-            </h3>
-            
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '36px',
-                  padding: '0 16px',
-                  background: selectedFile ? 'rgba(0, 229, 255, 0.05)' : 'rgba(255,255,255,0.02)',
-                  border: selectedFile ? '1px solid var(--primary)' : '1px dashed rgba(255, 255, 255, 0.2)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                }}
-                className="hover-glow"
-              >
-                <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={handleFileChange} />
-                <span style={{ color: selectedFile ? 'white' : 'var(--text-muted)', fontSize: '13px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {selectedFile ? selectedFile.name : 'Selecionar PDF...'}
-                </span>
-              </label>
-
-              <button 
-                onClick={handleUpload}
-                disabled={uploading || !selectedFile}
-                className="btn-primary" 
-                style={{ height: '36px', padding: '0 16px', borderRadius: '6px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
-              >
-                {uploading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-                {uploading ? 'Enviando...' : 'Adicionar'}
-              </button>
-            </div>
+          {/* Chat */}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ChatWidget
+              agentName="Medical Agent"
+              icon={Heart}
+              agentColor="#10b981"
+              initialMessage={initialMessage}
+              context={examContext}
+            />
           </div>
-          
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--text-muted)', fontSize: '13px', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '16px 24px', fontWeight: '500' }}>Exame</th>
-                  <th style={{ padding: '16px 24px', fontWeight: '500' }}>Data</th>
-                  <th style={{ padding: '16px 24px', fontWeight: '500' }}>Laboratório</th>
-                  <th style={{ padding: '16px 24px', fontWeight: '500' }}>Status</th>
-                  <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'right' }}>Ações</th>
+        </div>
+      </div>
+
+      {/* ── LINHA 2: Tabela de Exames full-width ── */}
+      <div className="glass" style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '32px' }}>
+        <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Activity color="var(--primary)" size={20} /> Histórico de Exames
+          </h3>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              height: '36px', padding: '0 18px',
+              background: uploading ? 'rgba(255,255,255,0.05)' : 'rgba(0,229,255,0.08)',
+              border: '1px solid rgba(0,229,255,0.3)',
+              borderRadius: '8px', cursor: uploading ? 'not-allowed' : 'pointer',
+              color: uploading ? 'var(--text-muted)' : 'var(--primary)',
+              fontWeight: '600', fontSize: '13px', transition: 'all 0.25s ease',
+              pointerEvents: uploading ? 'none' : 'auto'
+            }}>
+              <input
+                type="file"
+                accept=".pdf"
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+                disabled={uploading}
+              />
+              {uploading
+                ? <><Loader2 size={14} className="animate-spin" /> Processando...</>
+                : <><Upload size={14} /> Enviar Exame</>}
+            </label>
+          </div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Exame</th>
+                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Data</th>
+                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Laboratório</th>
+                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Status</th>
+                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'right', color: 'var(--text-muted)', fontSize: '12px' }}>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {exams.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum laudo cadastrado ainda.</td>
                 </tr>
-              </thead>
-              <tbody>
-                {exams.length === 0 && (
-                  <tr>
-                    <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum laudo cadastrado ainda.</td>
+              )}
+              {exams.map(exam => (
+                <React.Fragment key={exam.id}>
+                  <tr
+                    onClick={() => toggleExam(exam.id)}
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: expandedExams[exam.id] ? 'rgba(255,255,255,0.02)' : 'transparent', transition: 'background 0.3s ease', cursor: 'pointer' }}
+                    className="hover-glow"
+                  >
+                    <td style={{ padding: '12px 16px', fontWeight: '500', color: 'white', fontSize: '13px' }}>{exam.exam_type}</td>
+                    <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>{new Date(exam.collection_date).toLocaleDateString('pt-BR')}</td>
+                    <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>{exam.laboratory_name && exam.laboratory_name !== 'null' ? exam.laboratory_name : '-'}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {exam.status === 'processing' ? (
+                        <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Loader2 className="animate-spin" size={12} /> Lendo
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(16,185,129,0.1)', color: '#10b981', borderRadius: '4px' }}>Extraído</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+                        {exam.document_url && (
+                          <a href={exam.document_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Baixar Original">
+                            <Download size={18} color="var(--primary)" />
+                          </a>
+                        )}
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(exam.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Excluir Exame">
+                          <Trash2 size={18} color="#ef4444" />
+                        </button>
+                        {expandedExams[exam.id] ? <ChevronUp size={18} color="var(--text-muted)" /> : <ChevronDown size={18} color="var(--text-muted)" />}
+                      </div>
+                    </td>
                   </tr>
-                )}
-                {exams.map(exam => (
-                  <React.Fragment key={exam.id}>
-                    <tr 
-                      onClick={() => toggleExam(exam.id)}
-                      style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: expandedExams[exam.id] ? 'rgba(255,255,255,0.02)' : 'transparent', transition: 'background 0.3s ease', cursor: 'pointer' }} 
-                      className="hover-glow"
-                    >
-                      <td style={{ padding: '12px 16px', fontWeight: '500', color: 'white', fontSize: '13px' }}>{exam.exam_type}</td>
-                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>{new Date(exam.collection_date).toLocaleDateString('pt-BR')}</td>
-                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>{exam.laboratory_name && exam.laboratory_name !== 'null' ? exam.laboratory_name : '-'}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        {exam.status === 'processing' ? (
-                          <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(255, 255, 255, 0.1)', color: 'white', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <Loader2 className="animate-spin" size={12} /> Lendo
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: '11px', padding: '4px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '4px' }}>Extraído</span>
+                  {expandedExams[exam.id] && (
+                    <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                      <td colSpan={5} style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        {exam.ai_insights?.chat_message && (
+                          <div style={{ padding: '16px', background: 'rgba(245,158,11,0.05)', borderLeft: '4px solid #f59e0b', borderRadius: '4px', marginBottom: '16px' }}>
+                            <div style={{ color: 'white', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+                              {exam.ai_insights.chat_message.split('\n').map((line, i) => (
+                                <span key={i} style={{ display: 'block', marginBottom: line.trim() === '' ? '8px' : '4px' }}>
+                                  {line.split(/(\*\*.*?\*\*)/g).map((part, j) => {
+                                    if (part.startsWith('**') && part.endsWith('**')) {
+                                      return <strong key={j} style={{ color: 'white', fontWeight: '700' }}>{part.slice(2, -2)}</strong>;
+                                    }
+                                    return <span key={j} style={{ color: 'var(--text-muted)' }}>{part}</span>;
+                                  })}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {exam.biomarkers && Object.keys(exam.biomarkers).length > 0 && (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' }}>
+                            {Object.entries(exam.biomarkers).map(([key, value]) => {
+                              const valObj = typeof value === 'object' ? value : { value, status: 'normal' };
+                              const borderColor = getStatusColor(valObj.status);
+                              return (
+                                <div key={key} style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: `1px solid ${borderColor}`, transition: 'all 0.2s ease' }} className="hover-glow">
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px', lineHeight: '1.2' }}>{key.replace(/_/g, ' ')}</span>
+                                    <div onMouseEnter={(e) => handleMouseEnter(e, key)} onMouseLeave={handleMouseLeave} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', marginLeft: '4px', flexShrink: 0 }}>
+                                      {loadingInfo[key] ? <Loader2 size={12} className="animate-spin" color="var(--primary)" /> : <Info size={12} color="var(--text-muted)" style={{ opacity: 0.6 }} />}
+                                    </div>
+                                  </div>
+                                  <strong style={{ fontSize: '14px', color: 'white' }}>{String(valObj.value)}</strong>
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
-                          {exam.document_url && (
-                            <a href={exam.document_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} title="Baixar Original">
-                              <Download size={18} color="var(--primary)" />
-                            </a>
-                          )}
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleDelete(exam.id); }} 
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} 
-                            title="Excluir Exame"
-                          >
-                            <Trash2 size={18} color="#ef4444" />
-                          </button>
-                          {expandedExams[exam.id] ? <ChevronUp size={18} color="var(--text-muted)" /> : <ChevronDown size={18} color="var(--text-muted)" />}
-                        </div>
-                      </td>
                     </tr>
-                    
-                    {expandedExams[exam.id] && (
-                      <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                        <td colSpan={5} style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          {exam.ai_insights && exam.ai_insights.chat_message && (
-                            <div style={{ padding: '16px', background: 'rgba(245, 158, 11, 0.05)', borderLeft: '4px solid #f59e0b', borderRadius: '4px', marginBottom: '16px' }}>
-                              <div style={{ color: 'white', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-                                {exam.ai_insights.chat_message.split('\n').map((line, i) => (
-                                  <span key={i} style={{ display: 'block', marginBottom: line.trim() === '' ? '8px' : '4px' }}>
-                                    {line.split(/(\*\*.*?\*\*)/g).map((part, j) => {
-                                      if (part.startsWith('**') && part.endsWith('**')) {
-                                        return <strong key={j} style={{ color: 'white', fontWeight: '700' }}>{part.slice(2, -2)}</strong>;
-                                      }
-                                      return <span key={j} style={{ color: 'var(--text-muted)' }}>{part}</span>;
-                                    })}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {exam.biomarkers && Object.keys(exam.biomarkers).length > 0 && (
-                            <div style={{ borderRadius: '8px', overflow: 'hidden' }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '8px' }}>
-                                {Object.entries(exam.biomarkers).map(([key, value]) => {
-                                  const valObj = typeof value === 'object' ? value : { value: value, status: 'normal' };
-                                  const borderColor = getStatusColor(valObj.status);
-                                  return (
-                                    <div key={key} style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: `1px solid ${borderColor}`, transition: 'all 0.2s ease' }} className="hover-glow">
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px', lineHeight: '1.2' }}>{key.replace(/_/g, ' ')}</span>
-                                        <div 
-                                          onMouseEnter={(e) => handleMouseEnter(e, key)} 
-                                          onMouseLeave={handleMouseLeave}
-                                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', marginLeft: '4px', flexShrink: 0 }}
-                                        >
-                                          {loadingInfo[key] ? <Loader2 size={12} className="animate-spin" color="var(--primary)" /> : <Info size={12} color="var(--text-muted)" style={{ opacity: 0.6 }} />}
-                                        </div>
-                                      </div>
-                                      <strong style={{ fontSize: '14px', color: 'white' }}>{String(valObj.value)}</strong>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </section>
+      </div>
 
-      {/* Tooltip Modal */}
+      {/* Tooltip */}
       {tooltip.isOpen && (
         <div style={{
           position: 'fixed', left: tooltip.x, top: tooltip.y - 10, transform: 'translate(-50%, -100%)',
-          backgroundColor: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(0, 229, 255, 0.3)', padding: '16px', borderRadius: '12px',
+          backgroundColor: 'rgba(15,23,42,0.95)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(0,229,255,0.3)', padding: '16px', borderRadius: '12px',
           width: 'max-content', maxWidth: '300px', color: 'white', fontSize: '14px', zIndex: 9999,
           pointerEvents: 'none', boxShadow: '0 12px 40px rgba(0,0,0,0.6)'
         }}>
@@ -553,12 +605,120 @@ const Exams = () => {
             <Info color="var(--primary)" size={16} />
             <strong style={{ color: 'var(--primary)' }}>{tooltip.key.replace(/_/g, ' ').toUpperCase()}</strong>
           </div>
-          <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.5' }}>
-            {tooltip.content}
-          </p>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.5' }}>{tooltip.content}</p>
         </div>
       )}
     </div>
+  );
+};
+
+const ActionPlanModal = ({ items }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  return (
+    <>
+      {/* Botão de trigger */}
+      <button
+        onClick={() => setIsOpen(true)}
+        style={{
+          width: '100%', padding: '10px 14px',
+          background: 'rgba(16,185,129,0.06)',
+          border: '1px solid rgba(16,185,129,0.25)',
+          borderRadius: '10px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          color: '#10b981', fontWeight: '600', fontSize: '12px',
+          transition: 'background 0.2s ease'
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{
+            background: '#10b981', color: '#0a0f1e', borderRadius: '50%',
+            width: '18px', height: '18px', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: '10px', fontWeight: '700'
+          }}>{items.length}</span>
+          Protocolo Clínico Ativo
+        </span>
+        <span style={{ fontSize: '11px', opacity: 0.8 }}>Ver plano ↗</span>
+      </button>
+
+      {/* Modal via Portal — monta direto no body, acima de tudo */}
+      {isOpen && ReactDOM.createPortal(
+        <div
+          onClick={() => setIsOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            background: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '24px',
+            animation: 'fadeIn 0.2s ease'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(135deg, rgba(15,23,42,0.99) 0%, rgba(10,15,30,0.99) 100%)',
+              border: '1px solid rgba(16,185,129,0.3)',
+              borderRadius: '20px',
+              padding: '32px',
+              width: '100%',
+              maxWidth: '520px',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 32px 100px rgba(0,0,0,0.8), 0 0 60px rgba(16,185,129,0.06)',
+              animation: 'slideUp 0.25s ease',
+              position: 'relative'
+            }}
+          >
+            {/* Header do modal */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '18px', color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{
+                    background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)',
+                    borderRadius: '8px', padding: '6px 8px'
+                  }}>🎯</span>
+                  Protocolo Clínico
+                </h2>
+                <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  {items.length} ações recomendadas pela IA
+                </p>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer',
+                  color: 'var(--text-muted)', fontSize: '16px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >✕</button>
+            </div>
+
+            {/* Lista de ações */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {items.map((item, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '12px',
+                  padding: '14px 16px',
+                  background: 'rgba(16,185,129,0.04)',
+                  border: '1px solid rgba(16,185,129,0.12)',
+                  borderRadius: '10px'
+                }}>
+                  <span style={{
+                    minWidth: '24px', height: '24px', borderRadius: '50%',
+                    background: 'rgba(16,185,129,0.2)', color: '#10b981',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '11px', fontWeight: '700', flexShrink: 0, marginTop: '2px'
+                  }}>{i + 1}</span>
+                  <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', lineHeight: '1.6' }}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 };
 
