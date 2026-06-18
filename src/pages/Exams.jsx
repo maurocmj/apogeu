@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Upload, FileText, Search, ExternalLink, ShieldAlert, Target, Loader2, Save, Info, Download, ChevronDown, ChevronUp, Activity, Heart, Calendar, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
+import { Upload, FileText, Search, ExternalLink, ShieldAlert, Target, Loader2, Save, Info, Download, ChevronDown, ChevronUp, Activity, Heart, Calendar, AlertTriangle, Trash2, RefreshCw, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import ChatWidget from '../components/ChatWidget';
 import ActionPlanCard from '../components/ActionPlanCard';
@@ -41,6 +41,7 @@ const Exams = () => {
   const [expandedExams, setExpandedExams] = useState({});
   const [evolutionSummary, setEvolutionSummary] = useState('');
   const [loadingEvolution, setLoadingEvolution] = useState(false);
+  const [chartTooltip, setChartTooltip] = useState({ isOpen: false, key: '', history: [], x: 0, y: 0 });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -337,6 +338,37 @@ const Exams = () => {
     }
   };
 
+  // Coleta histórico de um biomarcador em todos os exames
+  const getBiomarkerHistory = (key) => {
+    return exams
+      .filter(e => e.biomarkers?.[key] && e.status === 'processed')
+      .sort((a, b) => new Date(a.collection_date) - new Date(b.collection_date))
+      .map(e => {
+        const val = e.biomarkers[key];
+        const valObj = typeof val === 'object' ? val : { value: val, status: 'normal' };
+        const numMatch = String(valObj.value).match(/[\d.]+/);
+        return {
+          date: new Date(e.collection_date).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+          rawValue: String(valObj.value),
+          numValue: numMatch ? parseFloat(numMatch[0]) : null,
+          status: valObj.status
+        };
+      })
+      .filter(p => p.numValue !== null);
+  };
+
+  const handleChartMouseEnter = (e, key) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setChartTooltip({
+      isOpen: true, key,
+      history: getBiomarkerHistory(key),
+      x: rect.left + rect.width / 2,
+      y: rect.top
+    });
+  };
+  const handleChartMouseLeave = () => setChartTooltip(prev => ({ ...prev, isOpen: false }));
+
+
   const toggleExam = (id) => setExpandedExams(prev => ({ ...prev, [id]: !prev[id] }));
 
   const latestProcessedExam = exams.find(e => e.status === 'processed' && e.ai_insights);
@@ -577,8 +609,20 @@ const Exams = () => {
                                 <div key={key} style={{ background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '6px', border: `1px solid ${borderColor}`, transition: 'all 0.2s ease' }} className="hover-glow">
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                                     <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px', lineHeight: '1.2' }}>{key.replace(/_/g, ' ')}</span>
-                                    <div onMouseEnter={(e) => handleMouseEnter(e, key)} onMouseLeave={handleMouseLeave} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', marginLeft: '4px', flexShrink: 0 }}>
-                                      {loadingInfo[key] ? <Loader2 size={12} className="animate-spin" color="var(--primary)" /> : <Info size={12} color="var(--text-muted)" style={{ opacity: 0.6 }} />}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
+                                      {/* Ícone gráfico de evolução */}
+                                      <div
+                                        onMouseEnter={(e) => handleChartMouseEnter(e, key)}
+                                        onMouseLeave={handleChartMouseLeave}
+                                        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                                        title="Evolução ao longo do tempo"
+                                      >
+                                        <TrendingUp size={12} color="var(--primary)" style={{ opacity: 0.7 }} />
+                                      </div>
+                                      {/* Ícone info */}
+                                      <div onMouseEnter={(e) => handleMouseEnter(e, key)} onMouseLeave={handleMouseLeave} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help' }}>
+                                        {loadingInfo[key] ? <Loader2 size={12} className="animate-spin" color="var(--primary)" /> : <Info size={12} color="var(--text-muted)" style={{ opacity: 0.6 }} />}
+                                      </div>
                                     </div>
                                   </div>
                                   <strong style={{ fontSize: '14px', color: 'white' }}>{String(valObj.value)}</strong>
@@ -597,7 +641,7 @@ const Exams = () => {
         </div>
       </div>
 
-      {/* Tooltip */}
+      {/* Tooltip Info */}
       {tooltip.isOpen && (
         <div style={{
           position: 'fixed', left: tooltip.x, top: tooltip.y - 10, transform: 'translate(-50%, -100%)',
@@ -613,6 +657,68 @@ const Exams = () => {
           <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.5' }}>{tooltip.content}</p>
         </div>
       )}
+
+      {/* Tooltip Chart — evolução do biomarcador */}
+      {chartTooltip.isOpen && (() => {
+        const { key, history, x, y } = chartTooltip;
+        const hasData = history.length >= 2;
+        const values = hasData ? history.map(d => d.numValue) : [];
+        const min = hasData ? Math.min(...values) : 0;
+        const max = hasData ? Math.max(...values) : 1;
+        const range = max - min || 1;
+        const W = 220, H = 64, pad = 10;
+        const pts = hasData ? history.map((d, i) => ({
+          x: pad + (i / (history.length - 1)) * (W - 2 * pad),
+          y: H - pad - ((d.numValue - min) / range) * (H - 2 * pad)
+        })) : [];
+        const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+        return (
+          <div style={{
+            position: 'fixed', left: x, top: y - 10, transform: 'translate(-50%, -100%)',
+            backgroundColor: 'rgba(9,10,15,0.97)', backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(0,229,255,0.3)', padding: '14px 16px', borderRadius: '12px',
+            width: '240px', zIndex: 9999, pointerEvents: 'none',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.7)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+              <TrendingUp size={13} color="var(--primary)" />
+              <strong style={{ color: 'var(--primary)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                {key.replace(/_/g, ' ')}
+              </strong>
+            </div>
+            {!hasData ? (
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '12px' }}>
+                {history.length === 1 ? 'Apenas 1 registro — sem histórico ainda.' : 'Sem registros numéricos.'}
+              </p>
+            ) : (
+              <>
+                <svg width={W} height={H} style={{ display: 'block' }}>
+                  {/* Área abaixo da linha */}
+                  <defs>
+                    <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path d={`${pathD} L ${pts[pts.length-1].x} ${H} L ${pts[0].x} ${H} Z`} fill="url(#sparkGrad)" />
+                  <path d={pathD} fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinejoin="round" />
+                  {pts.map((p, i) => (
+                    <circle key={i} cx={p.x} cy={p.y} r="3" fill={getStatusColor(history[i].status)} stroke="rgba(9,10,15,0.8)" strokeWidth="1" />
+                  ))}
+                </svg>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                  {history.map((d, i) => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                      <span style={{ fontSize: '10px', color: getStatusColor(d.status), fontWeight: '600' }}>{d.rawValue}</span>
+                      <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{d.date}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 };
