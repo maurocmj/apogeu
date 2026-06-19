@@ -237,6 +237,45 @@
   animation: spin 1s linear infinite;
 }
 
+/* Google Health Connect Custom Styles */
+.health-connect-logo {
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 35%, #fbbc05 65%, #ea4335 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: capitalize;
+}
+
+.btn-connect-health-connect {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #34a853 0%, #10b981 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+  transition: all 0.3s ease;
+}
+
+.btn-connect-health-connect:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2e934b 0%, #059669 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(16, 185, 129, 0.3);
+}
+
+.btn-connect-health-connect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

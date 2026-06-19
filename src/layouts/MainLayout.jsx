@@ -18,6 +18,8 @@ import {
 import logo from '../assets/logo.png';
 import './MainLayout.css';
 
+const APP_VERSION = 'v1.8.0';
+
 const MainLayout = () => {
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -82,6 +84,18 @@ const MainLayout = () => {
         </nav>
 
         <div className="navbar-actions">
+          {/* Badge de versão */}
+          <span style={{
+            fontSize: '10px',
+            fontFamily: 'monospace',
+            color: 'var(--text-muted)',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '4px',
+            padding: '2px 7px',
+            letterSpacing: '0.5px',
+            userSelect: 'none'
+          }}>{APP_VERSION}</span>
           <div className="nav-item" title="Usuário Logado">
             <UserCircle size={20} color="var(--primary)" />
           </div>
