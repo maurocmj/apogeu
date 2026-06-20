@@ -211,14 +211,37 @@ Deno.serve(async (req) => {
 
     const existingMetrics = existing?.metrics || {};
 
+    // Merge heart rate metrics intelligently
+    let merged_hr_avg = heart_rate_avg;
+    let merged_hr_min = heart_rate_min;
+    let merged_hr_max = heart_rate_max;
+
+    if (existingMetrics.heart_rate_avg !== undefined && heart_rate_avg !== undefined) {
+      merged_hr_avg = Math.round((Number(existingMetrics.heart_rate_avg) + heart_rate_avg) / 2);
+    } else if (existingMetrics.heart_rate_avg !== undefined) {
+      merged_hr_avg = Number(existingMetrics.heart_rate_avg);
+    }
+
+    if (existingMetrics.heart_rate_min !== undefined && heart_rate_min !== undefined) {
+      merged_hr_min = Math.min(Number(existingMetrics.heart_rate_min), heart_rate_min);
+    } else if (existingMetrics.heart_rate_min !== undefined) {
+      merged_hr_min = Number(existingMetrics.heart_rate_min);
+    }
+
+    if (existingMetrics.heart_rate_max !== undefined && heart_rate_max !== undefined) {
+      merged_hr_max = Math.max(Number(existingMetrics.heart_rate_max), heart_rate_max);
+    } else if (existingMetrics.heart_rate_max !== undefined) {
+      merged_hr_max = Number(existingMetrics.heart_rate_max);
+    }
+
     const newMetrics = {
       ...existingMetrics,
       ...(sleep_hours !== undefined && { sleep_hours }),
       ...(sleep_quality !== undefined && { sleep_quality }),
       ...(stress_level !== undefined && { stress_level }),
-      ...(heart_rate_avg !== undefined && { heart_rate_avg }),
-      ...(heart_rate_min !== undefined && { heart_rate_min }),
-      ...(heart_rate_max !== undefined && { heart_rate_max }),
+      ...(merged_hr_avg !== undefined && { heart_rate_avg: merged_hr_avg }),
+      ...(merged_hr_min !== undefined && { heart_rate_min: merged_hr_min }),
+      ...(merged_hr_max !== undefined && { heart_rate_max: merged_hr_max }),
       ...(mood !== undefined && { mood }),
       ...(notes !== undefined && { notes }),
       sync_source: 'google_health_connect',
