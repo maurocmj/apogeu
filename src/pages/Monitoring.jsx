@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Smile, Frown, Meh, Moon, Activity, Brain, Target, Loader2, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
+import { useState, useEffect } from 'react';
+import { Smile, Frown, Meh, Moon, Activity, Brain, Target, Loader2, Sparkles, CheckCircle, AlertCircle, Heart } from 'lucide-react';
+import { AreaChart, Area, ComposedChart, Bar, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { supabase } from '../lib/supabaseClient';
-import ChatWidget from '../components/ChatWidget';
+import AgentBubbleCard from '../components/AgentBubbleCard';
 import ActionPlanCard from '../components/ActionPlanCard';
 
 const Monitoring = () => {
@@ -22,6 +22,11 @@ const Monitoring = () => {
   // Charts State
   const [sleepHistory, setSleepHistory] = useState([]);
   const [stressHistory, setStressHistory] = useState([]);
+  const [heartRateHistory, setHeartRateHistory] = useState([]);
+  const [todayHeartRateAvg, setTodayHeartRateAvg] = useState(null);
+  const [todayHeartRateMin, setTodayHeartRateMin] = useState(null);
+  const [todayHeartRateMax, setTodayHeartRateMax] = useState(null);
+  const [todayIsSynced, setTodayIsSynced] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -34,7 +39,7 @@ const Monitoring = () => {
     });
   }, []);
 
-  const fetchHabitsHistory = async (uid) => {
+  async function fetchHabitsHistory(uid) {
     try {
       const { data, error } = await supabase
         .from('daily_habits')
@@ -65,32 +70,31 @@ const Monitoring = () => {
       // Merge database data
       const mergedSleep = [];
       const mergedStress = [];
+      const mergedHeart = [];
       
-      const mockBaselines = {
-        'Seg': { sleep: 75, stress: 60 },
-        'Ter': { sleep: 82, stress: 45 },
-        'Qua': { sleep: 68, stress: 70 },
-        'Qui': { sleep: 90, stress: 30 },
-        'Sex': { sleep: 85, stress: 50 },
-        'Sáb': { sleep: 92, stress: 20 },
-        'Dom': { sleep: 85, stress: 40 }
-      };
-
       const todayStr = new Date().toISOString().split('T')[0];
 
       baseDays.forEach(item => {
         const dbRecord = data?.find(r => r.date === item.date);
-        const baseline = mockBaselines[item.day] || { sleep: 70, stress: 40 };
 
         if (dbRecord && dbRecord.metrics) {
           mergedSleep.push({
             day: item.day,
-            score: dbRecord.metrics.sleep_quality || 0,
-            hours: dbRecord.metrics.sleep_hours || 0
+            score: dbRecord.metrics.sleep_quality ?? null,
+            hours: dbRecord.metrics.sleep_hours ?? null
           });
           mergedStress.push({
             day: item.day,
-            level: dbRecord.metrics.stress_level || 0
+            level: dbRecord.metrics.stress_level ?? null
+          });
+          mergedHeart.push({
+            day: item.day,
+            avg: dbRecord.metrics.heart_rate_avg ?? null,
+            min: dbRecord.metrics.heart_rate_min ?? null,
+            max: dbRecord.metrics.heart_rate_max ?? null,
+            range: (dbRecord.metrics.heart_rate_min && dbRecord.metrics.heart_rate_max)
+              ? [dbRecord.metrics.heart_rate_min, dbRecord.metrics.heart_rate_max]
+              : null
           });
           
           // Pre-populate form if it's today's date
@@ -100,32 +104,43 @@ const Monitoring = () => {
             setStressLevel(dbRecord.metrics.stress_level || 30);
             setSelectedMood(dbRecord.metrics.mood || 'Bem / Disposto');
             setNotes(dbRecord.metrics.notes || '');
+            setTodayHeartRateAvg(dbRecord.metrics.heart_rate_avg || null);
+            setTodayHeartRateMin(dbRecord.metrics.heart_rate_min || null);
+            setTodayHeartRateMax(dbRecord.metrics.heart_rate_max || null);
+            setTodayIsSynced(dbRecord.metrics.sync_source === 'google_health_connect');
             setHasLoggedToday(true);
           }
         } else {
-          // Use baseline mock values if no real data in DB yet
-          const isToday = item.date === todayStr;
+          // Bring only real data: set to null if no DB record exists
           mergedSleep.push({
             day: item.day,
-            score: isToday ? 0 : baseline.sleep,
-            hours: isToday ? 0 : 8
+            score: null,
+            hours: null
           });
           mergedStress.push({
             day: item.day,
-            level: isToday ? 0 : baseline.stress
+            level: null
+          });
+          mergedHeart.push({
+            day: item.day,
+            avg: null,
+            min: null,
+            max: null,
+            range: null
           });
         }
       });
 
       setSleepHistory(mergedSleep);
       setStressHistory(mergedStress);
+      setHeartRateHistory(mergedHeart);
 
     } catch (err) {
       console.error("Erro ao carregar histórico:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleSave = async () => {
     if (!userId) return;
@@ -134,7 +149,22 @@ const Monitoring = () => {
     
     try {
       const todayStr = new Date().toISOString().split('T')[0];
-      const metrics = {
+      
+      // 1. Fetch current record for today to merge metrics JSONB
+      const { data: existingRec, error: fetchError } = await supabase
+        .from('daily_habits')
+        .select('metrics')
+        .eq('user_id', userId)
+        .eq('date', todayStr)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      const existingMetrics = existingRec?.metrics || {};
+
+      // 2. Merge existing metrics with manual inputs (preserving synced heart rate/sources)
+      const mergedMetrics = {
+        ...existingMetrics,
         sleep_hours: sleepHours,
         sleep_quality: sleepQuality,
         stress_level: stressLevel,
@@ -147,7 +177,7 @@ const Monitoring = () => {
         .upsert({
           user_id: userId,
           date: todayStr,
-          metrics: metrics
+          metrics: mergedMetrics
         }, { onConflict: 'user_id, date' });
 
       if (error) throw error;
@@ -183,13 +213,6 @@ const Monitoring = () => {
 
   return (
     <div className="module-container">
-      <header className="page-header" style={{ marginBottom: '32px' }}>
-        <h1 className="neon-text">Monitoramento</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginTop: '8px', fontWeight: '400' }}>
-          Acompanhamento de Sono, Stress e Sensações
-        </p>
-      </header>
-
       {message.text && (
         <div className={`toast-notification ${message.type}`} style={{ marginBottom: '24px' }}>
           {message.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
@@ -214,25 +237,43 @@ const Monitoring = () => {
             
             <div style={{ height: '120px', marginTop: '16px' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={sleepHistory} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                <ComposedChart data={sleepHistory} margin={{ top: 10, right: 12, left: 12, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorSleep" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
                   <XAxis dataKey="day" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                  {/* Dual Y-Axis */}
+                  <YAxis yAxisId="left" hide={true} domain={['dataMin - 10', 'dataMax + 10']} />
+                  <YAxis yAxisId="right" hide={true} domain={['dataMin - 2', 'dataMax + 2']} />
                   <Tooltip 
                     contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }} 
-                    itemStyle={{ color: '#8b5cf6' }} 
-                    formatter={(value) => [`${value} pts`, 'Score']}
+                    formatter={(value, name) => {
+                      if (value === null || value === undefined) return ['Sem registro', name];
+                      if (name === 'Qualidade') return [`${value} pts`, name];
+                      if (name === 'Duração') return [`${value}h`, name];
+                      return [value, name];
+                    }}
                   />
-                  <Area type="monotone" dataKey="score" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorSleep)" strokeWidth={2} />
-                </AreaChart>
+                  {/* Sleep Quality Area (left Y-axis) */}
+                  <Area yAxisId="left" name="Qualidade" type="monotone" dataKey="score" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorSleep)" strokeWidth={3} connectNulls={true} dot={{ r: 6, fill: '#8b5cf6', stroke: '#ffffff', strokeWidth: 2 }} activeDot={{ r: 8 }} />
+                  {/* Sleep Hours Line (right Y-axis) */}
+                  <Line yAxisId="right" name="Duração" type="monotone" dataKey="hours" stroke="#00e5ff" strokeWidth={2} connectNulls={true} dot={{ r: 5, fill: '#00e5ff', stroke: '#ffffff', strokeWidth: 1.5 }} activeDot={{ r: 7 }} />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '16px', fontWeight: '500' }}>
-              {displaySleepText}. {hasLoggedToday && sleepQuality >= 80 ? 'Recuperação profunda adequada. Fase REM ideal.' : ''}
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '16px', fontWeight: '500', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>
+                {displaySleepText}. {hasLoggedToday && sleepQuality >= 80 ? 'Recuperação profunda adequada. Fase REM ideal.' : ''}
+              </span>
+              {hasLoggedToday && todayIsSynced && (
+                <span style={{ fontSize: '11px', background: 'rgba(0, 229, 255, 0.1)', color: '#00e5ff', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(0, 229, 255, 0.2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Sparkles size={10} /> Health Connect
+                </span>
+              )}
             </p>
           </div>
 
@@ -250,25 +291,86 @@ const Monitoring = () => {
 
             <div style={{ height: '120px', marginTop: '16px' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stressHistory} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                <AreaChart data={stressHistory} margin={{ top: 10, right: 12, left: 12, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorStress" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
                   <XAxis dataKey="day" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis hide={true} domain={['dataMin - 10', 'dataMax + 10']} />
                   <Tooltip 
                     contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }} 
                     itemStyle={{ color: '#10b981' }} 
-                    formatter={(value) => [`${value}%`, 'Estresse']}
+                    formatter={(value) => {
+                      if (value === null || value === undefined) return ['Sem registro', 'Estresse'];
+                      return [`${value}%`, 'Estresse'];
+                    }}
                   />
-                  <Area type="monotone" dataKey="level" stroke="#10b981" fillOpacity={1} fill="url(#colorStress)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="level" stroke="#10b981" fillOpacity={1} fill="url(#colorStress)" strokeWidth={2} connectNulls={true} dot={{ r: 6, fill: '#10b981', stroke: '#ffffff', strokeWidth: 2 }} activeDot={{ r: 8 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '16px', fontWeight: '500' }}>
-              {displayStressText}. {hasLoggedToday && stressLevel <= 30 ? 'Variação da frequência cardíaca estável. Boa adaptação neuromuscular.' : ''}
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '16px', fontWeight: '500', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>
+                {displayStressText}. {hasLoggedToday && stressLevel <= 30 ? 'Variação da frequência cardíaca estável. Boa adaptação neuromuscular.' : ''}
+              </span>
+              {hasLoggedToday && todayIsSynced && (
+                <span style={{ fontSize: '11px', background: 'rgba(0, 229, 255, 0.1)', color: '#00e5ff', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(0, 229, 255, 0.2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Sparkles size={10} /> Health Connect
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div className="glass" style={{ padding: '24px', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '16px', fontWeight: '500' }}>
+                <Heart size={20} color="#ef4444" /> Frequência Cardíaca
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'end', gap: '8px' }}>
+                <span className="display-number neon-text" style={{ fontSize: '32px', lineHeight: '1', color: '#ef4444' }}>
+                  {hasLoggedToday && todayHeartRateAvg ? `${todayHeartRateAvg}` : '--'}
+                </span>
+                <span style={{ color: 'var(--text-muted)', paddingBottom: '4px', fontSize: '14px' }}>BPM (Médio)</span>
+              </div>
+            </div>
+            
+            <div style={{ height: '120px', marginTop: '16px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={heartRateHistory} margin={{ top: 10, right: 12, left: 12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
+                  <XAxis dataKey="day" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis hide={true} domain={['dataMin - 2', 'dataMax + 2']} />
+                  <Tooltip 
+                    contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }} 
+                    formatter={(value, name) => {
+                      if (value === null || value === undefined) return ['Sem registro', name];
+                      return [`${value} bpm`, name];
+                    }}
+                  />
+                  {/* Maximum heart rate line (crimson red) */}
+                  <Line type="monotone" dataKey="max" name="Máximo" stroke="#be123c" strokeOpacity={0.8} strokeWidth={1.5} connectNulls={true} dot={{ r: 4, fill: '#be123c', stroke: '#ffffff', strokeWidth: 1.5 }} />
+                  {/* Average heart rate line (solid red) */}
+                  <Line type="monotone" dataKey="avg" name="Média" stroke="#ef4444" strokeWidth={3} connectNulls={true} dot={{ r: 6, fill: '#ef4444', stroke: '#ffffff', strokeWidth: 2 }} activeDot={{ r: 8 }} />
+                  {/* Minimum heart rate line (light red/rose) */}
+                  <Line type="monotone" dataKey="min" name="Mínimo" stroke="#fda4af" strokeOpacity={0.8} strokeWidth={1.5} connectNulls={true} dot={{ r: 4, fill: '#fda4af', stroke: '#ffffff', strokeWidth: 1.5 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '16px', fontWeight: '500', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>
+                {hasLoggedToday && todayHeartRateAvg 
+                  ? `Mín: ${todayHeartRateMin} bpm · Máx: ${todayHeartRateMax} bpm` 
+                  : 'Registros pendentes'}
+              </span>
+              {hasLoggedToday && todayIsSynced && (
+                <span style={{ fontSize: '11px', background: 'rgba(0, 229, 255, 0.1)', color: '#00e5ff', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(0, 229, 255, 0.2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Sparkles size={10} /> Health Connect
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -427,14 +529,13 @@ const Monitoring = () => {
 
         {/* Mind Agent Chat & Plan */}
         <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div className="glass" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', borderRadius: '12px' }}>
-            <ChatWidget 
-              agentName="Mind Agent" 
-              icon={Brain} 
-              agentColor="#8b5cf6" 
-              initialMessage="Sua fase de sono profundo não foi ideal na noite passada. Sabendo que você tem treino pesado hoje, recomendo um cochilo de 20 min à tarde se possível." 
-            />
-          </div>
+          <AgentBubbleCard 
+            agentId="mind"
+            agentName="Mind Agent" 
+            icon={Brain} 
+            agentColor="#8b5cf6" 
+            message="Sua fase de sono profundo não foi ideal na noite passada. Sabendo que você tem treino pesado hoje, recomendo um cochilo de 20 min à tarde se possível." 
+          />
 
           <ActionPlanCard 
             title="Protocolo de Recuperação"

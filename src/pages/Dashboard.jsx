@@ -3,7 +3,7 @@ import './Dashboard.css';
 import { Activity, Flame, Heart, Moon, Droplet, User as UserIcon, Medal, Apple, Dumbbell, Brain, Target } from 'lucide-react';
 import RadarChartScore from '../components/RadarChartScore';
 import GoalTimeline from '../components/GoalTimeline';
-import ChatWidget from '../components/ChatWidget';
+import AgentBubbleCard from '../components/AgentBubbleCard';
 import { supabase } from '../lib/supabaseClient';
 
 const Dashboard = () => {
@@ -171,7 +171,12 @@ const Dashboard = () => {
 
       {/* Right Column: AI Chat & Challenges */}
       <aside className="home-right-col">
-        <ChatWidget agentName="APOGEU IA" />
+        <AgentBubbleCard 
+          agentId="apogeu"
+          agentName="APOGEU IA" 
+          agentColor="var(--primary)" 
+          message="Olá, Mauro! Hoje o seu foco está na recuperação muscular e hidratação. Seus indicadores de sono foram muito bons." 
+        />
         
         <div className="challenges-card glass">
           <div className="card-header">

@@ -10,6 +10,15 @@ const categoryMapping = {
   'Estrutural': ['calcio', 'vitamina_d', 'ferro', 'ferritina', 'magnesio', 'testosterona', 'osso', 'musculo', 'carcinoma', 'pele', 'varicocele', 'lesao', 'tumor', 'massa'],
 };
 
+const tooltipsInfo = {
+  'Cardiovascular': 'Saúde do coração e sistema circulatório (Ex: Colesterol, Pressão)',
+  'Metabólico': 'Processamento de energia e peso (Ex: Glicose, Tireoide, IMC)',
+  'Neurológico': 'Saúde mental, sono e estresse (Ex: Cortisol, Ansiedade)',
+  'Imunológico': 'Defesas do organismo (Ex: Linfócitos, Imunidade)',
+  'Órgãos Vitais': 'Funcionamento de Rins, Fígado e Pulmão',
+  'Estrutural': 'Ossos, músculos e lesões (Ex: Vitamina D, Testosterona)'
+};
+
 const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index, hasData }) => {
   return (
     <text
@@ -22,7 +31,9 @@ const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index, hasData 
       fill={hasData ? 'white' : 'var(--text-muted)'}
       fontSize={12}
       fontWeight={hasData ? 600 : 400}
+      style={{ cursor: 'help' }}
     >
+      <title>{tooltipsInfo[payload.value] || payload.value}</title>
       <tspan x={x} dy="0em">{payload.value}</tspan>
       {!hasData && (
         <tspan x={x} dy="1.4em" fontSize={10} fill="var(--text-muted)" fontWeight={400}>
@@ -96,7 +107,7 @@ const HealthRadarChart = ({ exams = [] }) => {
   return (
     <div style={{ width: '100%', height: '300px' }}>
       <ResponsiveContainer width="100%" height="100%">
-        <RadarChart cx="50%" cy="50%" outerRadius="65%" data={chartData}>
+        <RadarChart cx="50%" cy="50%" outerRadius="55%" data={chartData}>
           <PolarGrid stroke="rgba(255,255,255,0.1)" />
           
           <PolarAngleAxis 

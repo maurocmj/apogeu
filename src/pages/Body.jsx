@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import ChatWidget from '../components/ChatWidget';
+import AgentBubbleCard from '../components/AgentBubbleCard';
 import ActionPlanCard from '../components/ActionPlanCard';
 import { Activity, Target } from 'lucide-react';
 import './Body.css';
@@ -147,14 +147,13 @@ const Body = () => {
         
         {/* Bio Agent Chat & Plan */}
         <div style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div className="glass card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <ChatWidget 
-              agentName="Bio Agent" 
-              icon={Activity} 
-              agentColor="#00e5ff" 
-              initialMessage="Notei que sua inflamação corporal reduziu e o mapa de calor da linha de cintura está 'esfriando' mais rápido. Ótimo trabalho!" 
-            />
-          </div>
+          <AgentBubbleCard 
+            agentId="bio"
+            agentName="Bio Agent" 
+            icon={Activity} 
+            agentColor="#00e5ff" 
+            message="Notei que sua inflamação corporal reduziu e o mapa de calor da linha de cintura está 'esfriando' mais rápido. Ótimo trabalho!" 
+          />
 
           <ActionPlanCard 
             title="Alvos Morfológicos"

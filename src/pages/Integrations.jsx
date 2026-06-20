@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Link2, RefreshCw, AlertCircle, CheckCircle, Trash2, ArrowRight, Activity, Moon } from 'lucide-react';
+import { Link2, RefreshCw, AlertCircle, CheckCircle, Trash2, ArrowRight, Activity, Moon, X, Copy } from 'lucide-react';
 import './Integrations.css';
 
 const Integrations = () => {
@@ -11,6 +11,10 @@ const Integrations = () => {
   const [connection, setConnection] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [userId, setUserId] = useState(null);
+  const [showRealSyncModal, setShowRealSyncModal] = useState(false);
+  const [sessionToken, setSessionToken] = useState('');
+  const [healthSyncToken, setHealthSyncToken] = useState('');
+  const [rotatingToken, setRotatingToken] = useState(false);
 
 
   useEffect(() => {
@@ -32,10 +36,46 @@ const Integrations = () => {
 
       if (error) throw error;
       setConnection(data);
+
+      // Fetch health_sync_token from profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('health_sync_token')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (!profileError && profile) {
+        setHealthSyncToken(profile.health_sync_token || '');
+      }
     } catch (err) {
       console.error('Error fetching connection status:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRotateSyncToken = async () => {
+    if (!window.confirm('Tem certeza que deseja gerar um novo token? A sincronização no seu celular parará de funcionar imediatamente até que você configure o novo token lá.')) {
+      return;
+    }
+    
+    setRotatingToken(true);
+    try {
+      const newToken = crypto.randomUUID();
+      const { error } = await supabase
+        .from('profiles')
+        .update({ health_sync_token: newToken })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setHealthSyncToken(newToken);
+      alert('Novo token gerado com sucesso! Lembre-se de atualizá-lo no seu celular.');
+    } catch (err) {
+      console.error('Error rotating sync token:', err);
+      alert(`Falha ao gerar novo token: ${err.message}`);
+    } finally {
+      setRotatingToken(false);
     }
   };
 
@@ -156,6 +196,20 @@ const Integrations = () => {
     }
   };
 
+  const handleOpenRealSyncModal = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setSessionToken(session.access_token);
+        setShowRealSyncModal(true);
+      } else {
+        setMessage({ type: 'error', text: 'Usuário não autenticado. Por favor, faça login novamente.' });
+      }
+    } catch (err) {
+      console.error('Error opening real sync modal:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="module-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -170,7 +224,7 @@ const Integrations = () => {
       <header className="page-header" style={{ marginBottom: '32px', textAlign: 'center' }}>
         <h1 className="neon-text">Integrações</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginTop: '8px', fontWeight: '400' }}>
-          Conecte seus aplicativos e dispositivos de saúde favoritos ao Holos
+          Conecte seus aplicativos e dispositivos de saúde favoritos ao Apogeu
         </p>
       </header>
 
@@ -199,7 +253,6 @@ const Integrations = () => {
           </div>
 
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <h3>Strava</h3>
             <p>
               Sincronize automaticamente todas as suas atividades de corrida, ciclismo, musculação e treinos gerais. 
               Os dados serão consumidos diretamente pelo nosso 
@@ -263,18 +316,19 @@ const Integrations = () => {
           </div>
         </div>
 
-        {/* Card do Google Health Connect */}
+        {/* Card do Health Connect Webhook */}
         <div className="glass integration-card hover-glow connected" style={{ margin: 0 }}>
           <div className="card-header-row">
             <div className="brand-badge-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <svg viewBox="0 0 24 24" width="24" height="24" style={{ display: 'block' }}>
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.3-4.74 3.3-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                <svg viewBox="30 35 48 30" width="28" height="24" style={{ display: 'block' }}>
+                  <path
+                    fill="#34A853"
+                    fillRule="nonZero"
+                    d="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.4 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.4 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
+                  />
                 </svg>
-                <span className="brand-logo" style={{ color: '#fff', fontSize: '18px', fontWeight: 600 }}>Google Health</span>
+                <span className="brand-logo" style={{ color: '#fff', fontSize: '18px', fontWeight: 600 }}>HC Webhook</span>
               </div>
               <span className="status-badge connected">
                 Ativo
@@ -283,10 +337,9 @@ const Integrations = () => {
           </div>
 
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <h3>Google Health Connect</h3>
             <p>
               Sincronize automaticamente seus dados de sono (duração e qualidade) e níveis de estresse diários (HRV). 
-              Os dados são importados do <strong>Samsung Health</strong> ou outro app compatível em segundo plano via webhook.
+              Os dados são importados do <strong>Samsung Health</strong> ou outro app compatível em segundo plano usando o aplicativo Health Connect Webhook.
             </p>
 
             <div className="features-list">
@@ -304,7 +357,7 @@ const Integrations = () => {
               </div>
             </div>
 
-            <div className="card-actions" style={{ marginTop: 'auto' }}>
+            <div className="card-actions" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button 
                 className="btn-connect-health-connect" 
                 onClick={handleSimulateHealthConnect}
@@ -313,10 +366,169 @@ const Integrations = () => {
                 <RefreshCw size={18} className={syncingHC ? 'spin' : ''} />
                 {syncingHC ? 'Sincronizando...' : 'Simular Sincronização'}
               </button>
+
+              <button 
+                type="button"
+                className="btn-sync" 
+                onClick={handleOpenRealSyncModal}
+                style={{ width: '100%', padding: '12px 20px', borderRadius: '12px' }}
+              >
+                Configurar Sincronização Real
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {showRealSyncModal && (
+        <div className="modal-overlay" onClick={() => setShowRealSyncModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Configuração do Health Connect</h2>
+              <button className="close-btn" onClick={() => setShowRealSyncModal(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px' }}>
+                <span style={{ fontSize: '20px', fontWeight: 'bold', lineHeight: 1 }}>✕</span>
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="step-box">
+                <h4>Passo 1: Vincule o Samsung Health ao Health Connect</h4>
+                <p>
+                  No seu celular, abra o <strong>Samsung Health</strong>, vá em Configurações ➔ Apps ➔ <strong>Health Connect</strong> e ative a permissão para sincronizar dados de Sono e Estresse.
+                </p>
+              </div>
+
+              <div className="step-box">
+                <h4>Passo 2: Instale o App "Health Connect Webhook"</h4>
+                <p>
+                  Como os dados ficam salvos localmente no celular, instale o app <strong>Health Connect Webhook</strong>. Você pode baixá-lo gratuitamente na página de <a href="https://github.com/mcnaveen/health-connect-webhook/releases" target="_blank" rel="noopener noreferrer" style={{ color: '#34a853', textDecoration: 'underline', fontWeight: 600 }}>Releases do GitHub</a> ou pela Google Play Store.
+                </p>
+              </div>
+
+              <div className="step-box">
+                <h4>Passo 3: URL do Webhook</h4>
+                <p>Insira a seguinte URL no campo de endpoint do aplicativo:</p>
+                <div className="copy-input-group">
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value="https://iyerxceeoydypyoahbbf.supabase.co/functions/v1/health-connect-sync" 
+                  />
+                  <button 
+                    className="btn-copy"
+                    onClick={() => {
+                      navigator.clipboard.writeText("https://iyerxceeoydypyoahbbf.supabase.co/functions/v1/health-connect-sync");
+                      alert("URL copiada!");
+                    }}
+                  >
+                    Copiar
+                  </button>
+                </div>
+              </div>
+
+              <div className="step-box">
+                <h4>Passo 4: Token de Autorização</h4>
+                <p>Configure a autorização. Use a opção permanente para que o aplicativo continue sincronizando em segundo plano sem expirar:</p>
+                
+                <p style={{ fontSize: '12px', margin: '8px 0 4px 0', color: '#34a853', fontWeight: 600 }}>
+                  Opção Recomendada: Sincronização Permanente (Nunca expira)
+                </p>
+                <div className="copy-input-group" style={{ marginBottom: '8px' }}>
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value={`Bearer ${healthSyncToken}`} 
+                    style={{ border: '1px solid rgba(52, 168, 83, 0.4)' }}
+                  />
+                  <button 
+                    type="button"
+                    className="btn-copy"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`Bearer ${healthSyncToken}`);
+                      alert("Chave de sincronização permanente copiada!");
+                    }}
+                    style={{ background: '#34a853' }}
+                  >
+                    Copiar
+                  </button>
+                </div>
+                <button 
+                  type="button"
+                  className="btn-rotate-token"
+                  onClick={handleRotateSyncToken}
+                  disabled={rotatingToken}
+                  style={{
+                    fontSize: '11px',
+                    color: '#f59e0b',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                    marginBottom: '16px',
+                    textAlign: 'left',
+                    display: 'block'
+                  }}
+                >
+                  {rotatingToken ? 'Gerando novo token...' : '🔄 Gerar Novo Token (Invalida o anterior)'}
+                </button>
+
+                <div style={{ borderTop: '1px dashed rgba(255, 255, 255, 0.1)', paddingTop: '12px', marginTop: '12px' }}>
+                  <p style={{ fontSize: '12px', margin: '0 0 6px 0', color: 'var(--text-muted)' }}>
+                    Opções Temporárias (Expiram em 1 hora, úteis apenas para testes rápidos):
+                  </p>
+                  
+                  <p style={{ fontSize: '11px', margin: '4px 0 2px 0', color: 'var(--text-muted)' }}>Opção A: Cabeçalho completo de sessão</p>
+                  <div className="copy-input-group" style={{ marginBottom: '8px' }}>
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={`Bearer ${sessionToken}`} 
+                      style={{ fontSize: '12px', opacity: 0.7 }}
+                    />
+                    <button 
+                      type="button"
+                      className="btn-copy"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`Bearer ${sessionToken}`);
+                        alert("Cabeçalho copiado!");
+                      }}
+                      style={{ opacity: 0.7 }}
+                    >
+                      Copiar
+                    </button>
+                  </div>
+
+                  <p style={{ fontSize: '11px', margin: '4px 0 2px 0', color: 'var(--text-muted)' }}>Opção B: Apenas o Token de sessão puro</p>
+                  <div className="copy-input-group">
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={sessionToken} 
+                      style={{ fontSize: '12px', opacity: 0.7 }}
+                    />
+                    <button 
+                      type="button"
+                      className="btn-copy"
+                      onClick={() => {
+                        navigator.clipboard.writeText(sessionToken);
+                        alert("Token puro copiado!");
+                      }}
+                      style={{ opacity: 0.7 }}
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: '11px', marginTop: '12px', color: '#f59e0b' }}>
+                  Nota: Estes tokens identificam sua conta do Apogeu de forma segura. Não os compartilhe com terceiros.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

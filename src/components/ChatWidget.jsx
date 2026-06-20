@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Send, Bot, User } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 import './ChatWidget.css';
 
 const ChatWidget = ({ 
@@ -53,7 +54,23 @@ const ChatWidget = ({
       if (data.choices && data.choices.length > 0) {
         setMessages(prev => [...prev, { role: 'assistant', text: data.choices[0].message.content }]);
       }
+
+      // Log token usage
+      if (data.usage) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await supabase.from('ai_token_usage').insert({
+            user_id: session.user.id,
+            feature: 'chat_widget',
+            model: 'gpt-4o-mini',
+            prompt_tokens: data.usage.prompt_tokens,
+            completion_tokens: data.usage.completion_tokens,
+            total_tokens: data.usage.total_tokens
+          });
+        }
+      }
     } catch (e) {
+      console.error(e);
       setMessages(prev => [...prev, { role: 'assistant', text: "Desculpe, ocorreu um erro na conexão." }]);
     }
   };

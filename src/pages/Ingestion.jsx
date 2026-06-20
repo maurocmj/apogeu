@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Droplet, Camera, Utensils, CheckCircle2, AlertTriangle, Apple, Target } from 'lucide-react';
-import ChatWidget from '../components/ChatWidget';
+import AgentBubbleCard from '../components/AgentBubbleCard';
 import ActionPlanCard from '../components/ActionPlanCard';
 import WeeklyNutritionPlan from '../components/WeeklyNutritionPlan';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
@@ -161,14 +161,13 @@ const Ingestion = () => {
 
         {/* Third Column (or pushed right): Nutri Agent Chat & Plan */}
         <div className="ingestion-chat-col" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div className="glass card" style={{ padding: 0, overflow: 'hidden' }}>
-            <ChatWidget 
-              agentName="Nutri Agent" 
-              icon={Apple} 
-              agentColor="#10b981" 
-              initialMessage="Seu almoço foi excelente! Para o jantar, como você gastou bastante energia no treino, recomendo manter a proteína alta, mas podemos adicionar um carboidrato complexo leve. Que tal batata doce?" 
-            />
-          </div>
+          <AgentBubbleCard 
+            agentId="nutri"
+            agentName="Nutri Agent" 
+            icon={Apple} 
+            agentColor="#10b981" 
+            message="Seu almoço foi excelente! Para o jantar, como você gastou bastante energia no treino, recomendo manter a proteína alta, mas podemos adicionar um carboidrato complexo leve. Que tal batata doce?" 
+          />
 
           <ActionPlanCard 
             title="Foco dos Próximos 3 Dias"

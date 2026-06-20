@@ -1,6 +1,14 @@
 import React, { useMemo } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
+const tooltipsInfo = {
+  'Resistência': 'Capacidade aeróbica e endurance em exercícios longos',
+  'Velocidade': 'Pace, sprints e desempenho em alta intensidade',
+  'Consistência': 'Regularidade e adesão aos treinos propostos',
+  'Volume': 'Quantidade total de treino (tempo e distância acumulada)',
+  'Intensidade': 'Esforço relativo percebido (Suffer Score, Zonas de FC)'
+};
+
 const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index }) => {
   return (
     <text
@@ -13,7 +21,9 @@ const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index }) => {
       fill="white"
       fontSize={12}
       fontWeight={600}
+      style={{ cursor: 'help' }}
     >
+      <title>{tooltipsInfo[payload.value] || payload.value}</title>
       <tspan x={x} dy="0em">{payload.value}</tspan>
     </text>
   );
@@ -38,7 +48,7 @@ const SportsRadarChart = ({ activities = [] }) => {
   return (
     <div style={{ width: '100%', height: '300px' }}>
       <ResponsiveContainer width="100%" height="100%">
-        <RadarChart cx="50%" cy="50%" outerRadius="65%" data={chartData}>
+        <RadarChart cx="50%" cy="50%" outerRadius="55%" data={chartData}>
           <PolarGrid stroke="rgba(255,255,255,0.1)" />
           
           <PolarAngleAxis 

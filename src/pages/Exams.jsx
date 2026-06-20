@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Upload, FileText, Search, ExternalLink, ShieldAlert, Target, Loader2, Save, Info, Download, ChevronDown, ChevronUp, Activity, Heart, Calendar, AlertTriangle, Trash2, RefreshCw, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import ChatWidget from '../components/ChatWidget';
+import AgentBubbleCard from '../components/AgentBubbleCard';
 import ActionPlanCard from '../components/ActionPlanCard';
 import HealthRadarChart from '../components/HealthRadarChart';
 import HealthScoreTimelineChart from '../components/HealthScoreTimelineChart';
@@ -86,6 +86,12 @@ const Exams = () => {
       })
     });
     const parserJson = await parserRes.json();
+    if (parserJson.usage && userId) {
+      supabase.from('ai_token_usage').insert({
+        user_id: userId, feature: 'exam_parser', model: 'gpt-4o-mini',
+        prompt_tokens: parserJson.usage.prompt_tokens, completion_tokens: parserJson.usage.completion_tokens, total_tokens: parserJson.usage.total_tokens
+      }).then();
+    }
     const parsedData = JSON.parse(parserJson.choices[0].message.content || "{}");
 
     // 3. Atualiza Exame com Biomarcadores + data real do exame
@@ -140,6 +146,12 @@ const Exams = () => {
       })
     });
     const agentJson = await agentRes.json();
+    if (agentJson.usage && userId) {
+      supabase.from('ai_token_usage').insert({
+        user_id: userId, feature: 'medical_agent', model: 'gpt-4o-mini',
+        prompt_tokens: agentJson.usage.prompt_tokens, completion_tokens: agentJson.usage.completion_tokens, total_tokens: agentJson.usage.total_tokens
+      }).then();
+    }
     const insights = JSON.parse(agentJson.choices[0].message.content || "{}");
 
     // 6. Atualiza Exame com Insights
@@ -207,6 +219,12 @@ const Exams = () => {
           })
         });
         const data = await res.json();
+        if (data.usage && userId) {
+          supabase.from('ai_token_usage').insert({
+            user_id: userId, feature: 'evolution_analysis', model: 'gpt-4o-mini',
+            prompt_tokens: data.usage.prompt_tokens, completion_tokens: data.usage.completion_tokens, total_tokens: data.usage.total_tokens
+          }).then();
+        }
         const text = data.choices?.[0]?.message?.content;
         if (text) {
           setEvolutionSummary(text);
@@ -449,8 +467,8 @@ const Exams = () => {
             </div>
             <span className="badge">Atualizado {lastExamDate !== 'N/A' ? lastExamDate : 'hoje'}</span>
           </div>
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ width: '100%', maxWidth: '280px' }}>
+          <div className="radar-chart-wrapper" style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '16px' }}>
+            <div style={{ width: '100%', maxWidth: '380px' }}>
               <HealthRadarChart exams={exams} />
             </div>
           </div>
@@ -536,12 +554,12 @@ const Exams = () => {
 
           {/* Chat */}
           <div style={{ flex: 1, minHeight: 0 }}>
-            <ChatWidget
+            <AgentBubbleCard
+              agentId="medical"
               agentName="Medical Agent"
               icon={Heart}
               agentColor="#10b981"
-              initialMessage={initialMessage}
-              context={examContext}
+              message={initialMessage}
             />
           </div>
         </div>

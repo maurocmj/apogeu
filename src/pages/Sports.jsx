@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Target, Dumbbell, ChevronDown, Filter, Search, Share2, Trash2, Edit2, RefreshCw, Link2, Activity, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import ChatWidget from '../components/ChatWidget';
+import AgentBubbleCard from '../components/AgentBubbleCard';
 import ActionPlanCard from '../components/ActionPlanCard';
 import SportsRadarChart from '../components/SportsRadarChart';
 import SportsScoreTimelineChart from '../components/SportsScoreTimelineChart';
@@ -179,7 +179,7 @@ const Sports = () => {
             <span className="badge" style={{ background: 'rgba(252, 76, 2, 0.12)', color: '#fc4c02', border: '1px solid rgba(252, 76, 2, 0.25)' }}>Strava Sync</span>
           </div>
           <div className="radar-chart-wrapper" style={{ display: 'flex', justifyContent: 'center', width: '100%', marginBottom: '16px' }}>
-            <div style={{ width: '100%', maxWidth: '320px' }}>
+            <div style={{ width: '100%', maxWidth: '380px' }}>
               <SportsRadarChart activities={activities} />
             </div>
           </div>
@@ -241,12 +241,12 @@ const Sports = () => {
           />
         </div>
         <div>
-          <ChatWidget 
+          <AgentBubbleCard 
+            agentId="personal"
             agentName="Personal Agent" 
             icon={Dumbbell} 
             agentColor="#fc4c02" 
-            initialMessage="Notei que sua carga de treino subiu 20% essa semana comparado à passada. Como está se sentindo? Recomendo focar em descanso e hidratação hoje para evitar fadiga neuromuscular." 
-            context={`Atividades totais: ${activities.length}`}
+            message="Notei que sua carga de treino subiu 20% essa semana comparado à passada. Como está se sentindo? Recomendo focar em descanso e hidratação hoje para evitar fadiga neuromuscular." 
           />
         </div>
       </section>
