@@ -32,7 +32,7 @@ const Admin = () => {
     try {
       const [promptsRes, tokensRes] = await Promise.all([
         supabase.from('agent_prompts').select('*').order('agent_role'),
-        supabase.from('ai_token_usage').select('*, user:profiles(name, email)').order('created_at', { ascending: false })
+        supabase.from('ai_token_usage').select('*, user:profiles(full_name)').order('created_at', { ascending: false })
       ]);
       
       if (promptsRes.error) throw promptsRes.error;
@@ -211,7 +211,7 @@ const Admin = () => {
                           {tokenUsage.slice(0, 50).map(log => (
                             <tr key={log.id} className="hover:bg-zinc-800/20">
                               <td className="px-4 py-3 whitespace-nowrap">{new Date(log.created_at).toLocaleString('pt-BR')}</td>
-                              <td className="px-4 py-3 truncate max-w-[150px]">{log.user?.name || log.user?.email || log.user_id}</td>
+                              <td className="px-4 py-3 truncate max-w-[150px]">{log.user?.full_name || log.user_id}</td>
                               <td className="px-4 py-3 font-mono text-xs">{log.feature}</td>
                               <td className="px-4 py-3 text-right font-semibold text-white">{log.total_tokens}</td>
                             </tr>

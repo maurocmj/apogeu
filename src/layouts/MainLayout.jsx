@@ -26,7 +26,7 @@ import logo from '../assets/logo.png';
 import './MainLayout.css';
 import { AgentChatProvider, useAgentChat } from '../context/AgentChatContext';
 
-const APP_VERSION = 'v1.9.0';
+const APP_VERSION = 'v1.9.1';
 
 // Global Agents Configuration
 const AGENTS = [
