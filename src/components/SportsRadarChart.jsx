@@ -2,14 +2,14 @@ import React, { useMemo } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 const tooltipsInfo = {
-  'Resistência': 'Capacidade aeróbica e endurance em exercícios longos',
-  'Velocidade': 'Pace, sprints e desempenho em alta intensidade',
-  'Consistência': 'Regularidade e adesão aos treinos propostos',
-  'Volume': 'Quantidade total de treino (tempo e distância acumulada)',
-  'Intensidade': 'Esforço relativo percebido (Suffer Score, Zonas de FC)'
+  'Resistência': 'Resistência: Avalia a capacidade aeróbica com base na duração e estabilidade da FC em treinos longos.',
+  'Velocidade': 'Velocidade: Analisa paces de pico, sprints e tempo acumulado em zonas anaeróbicas.',
+  'Consistência': 'Consistência: Mede a regularidade e penaliza dias consecutivos sem treino na rotina.',
+  'Volume': 'Volume: Pontuação calculada pelo acúmulo semanal de horas (moving time) e quilometragem total.',
+  'Intensidade': 'Intensidade: Avalia a carga do treino (Suffer Score), ganho de elevação e % de FC máxima.'
 };
 
-const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index }) => {
+const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index, setTooltipInfo }) => {
   return (
     <text
       radius={radius}
@@ -22,14 +22,18 @@ const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index }) => {
       fontSize={12}
       fontWeight={600}
       style={{ cursor: 'help' }}
+      onMouseEnter={(e) => setTooltipInfo({ text: tooltipsInfo[payload.value] || payload.value, title: payload.value, x: e.clientX, y: e.clientY })}
+      onMouseMove={(e) => setTooltipInfo({ text: tooltipsInfo[payload.value] || payload.value, title: payload.value, x: e.clientX, y: e.clientY })}
+      onMouseLeave={() => setTooltipInfo(null)}
     >
-      <title>{tooltipsInfo[payload.value] || payload.value}</title>
       <tspan x={x} dy="0em">{payload.value}</tspan>
     </text>
   );
 };
 
 const SportsRadarChart = ({ activities = [] }) => {
+  const [tooltipInfo, setTooltipInfo] = React.useState(null);
+
   // Para fins de demonstração, vamos gerar dados fictícios baseados na presença de atividades
   // Em um ambiente real, isso seria calculado no backend cruzando ritmo, duração e FC.
   const chartData = useMemo(() => {
@@ -53,7 +57,7 @@ const SportsRadarChart = ({ activities = [] }) => {
           
           <PolarAngleAxis 
             dataKey="subject" 
-            tick={(props) => <CustomTick {...props} />} 
+            tick={(props) => <CustomTick {...props} setTooltipInfo={setTooltipInfo} />} 
           />
           
           <PolarRadiusAxis angle={30} domain={[0, 5]} tick={false} axisLine={false} />
@@ -78,6 +82,29 @@ const SportsRadarChart = ({ activities = [] }) => {
           />
         </RadarChart>
       </ResponsiveContainer>
+      
+      {tooltipInfo && (
+        <div style={{
+          position: 'fixed',
+          top: tooltipInfo.y + 15,
+          left: tooltipInfo.x + 15,
+          zIndex: 9999,
+          background: 'rgba(15, 23, 42, 0.95)',
+          padding: '12px 16px',
+          border: '1px solid rgba(252, 76, 2, 0.3)',
+          borderRadius: '12px',
+          color: '#fff',
+          fontSize: '13px',
+          lineHeight: '1.5',
+          maxWidth: '260px',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(252, 76, 2, 0.15)',
+          pointerEvents: 'none'
+        }}>
+          <strong style={{ display: 'block', color: '#fc4c02', marginBottom: '4px', fontSize: '14px' }}>{tooltipInfo.title}</strong>
+          {tooltipInfo.text.split(': ')[1] || tooltipInfo.text}
+        </div>
+      )}
     </div>
   );
 };

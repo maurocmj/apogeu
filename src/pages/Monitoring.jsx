@@ -5,7 +5,10 @@ import { supabase } from '../lib/supabaseClient';
 import AgentBubbleCard from '../components/AgentBubbleCard';
 import ActionPlanCard from '../components/ActionPlanCard';
 
+import { useAgentChat } from '../context/AgentChatContext';
+
 const Monitoring = () => {
+  const { setChatContext, refreshGlobalUserContext } = useAgentChat();
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,6 +30,24 @@ const Monitoring = () => {
   const [todayHeartRateMin, setTodayHeartRateMin] = useState(null);
   const [todayHeartRateMax, setTodayHeartRateMax] = useState(null);
   const [todayIsSynced, setTodayIsSynced] = useState(false);
+
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const heartRateInfo = todayHeartRateAvg 
+      ? `Frequência Cardíaca de Hoje (${todayStr}): Média: ${todayHeartRateAvg} bpm, Mínima: ${todayHeartRateMin} bpm, Máxima: ${todayHeartRateMax} bpm (Sincronizado via Health Connect)`
+      : `Frequência Cardíaca de Hoje: Não sincronizada ou sem dados ainda.`;
+
+    const sleepInfo = `Último registro de hábitos diarios / sono de hoje: ${sleepHours} horas de sono, Qualidade: ${sleepQuality}%, Nível de estresse atual: ${stressLevel}%, Humor: ${selectedMood}, Notas: ${notes || 'Sem observações'}`;
+
+    const context = `Métricas de Saúde e Monitoramento do Usuário:\n- ${heartRateInfo}\n- ${sleepInfo}`;
+    setChatContext(context);
+    
+    refreshGlobalUserContext();
+    
+    return () => {
+      setChatContext('');
+    };
+  }, [todayHeartRateAvg, todayHeartRateMin, todayHeartRateMax, sleepHours, sleepQuality, stressLevel, selectedMood, notes, setChatContext, refreshGlobalUserContext]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

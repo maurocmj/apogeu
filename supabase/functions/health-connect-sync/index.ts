@@ -104,8 +104,9 @@ Deno.serve(async (req) => {
           for (const stage of session.stages) {
             // Stage mapping in Health Connect (typically):
             // 5 = deep, 6 = rem, 4 = light, 1 = awake
-            if (stage.stage === 5) deepSleepSeconds += stage.duration_seconds || 0;
-            if (stage.stage === 6) remSleepSeconds += stage.duration_seconds || 0;
+            const stageNum = Number(stage.stage);
+            if (stageNum === 5) deepSleepSeconds += stage.duration_seconds || 0;
+            if (stageNum === 6) remSleepSeconds += stage.duration_seconds || 0;
             totalStagesSeconds += stage.duration_seconds || 0;
           }
         }

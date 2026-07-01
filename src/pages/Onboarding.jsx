@@ -4,16 +4,24 @@ import { supabase } from '../lib/supabaseClient';
 import { ArrowRight, SkipForward, Upload, Camera, Activity, Watch, Link, MapPin, Search } from 'lucide-react';
 import ECGBackground from '../components/ECGBackground';
 import './Onboarding.css';
+
 const Onboarding = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
 
-  // States para salvar
+  // States para salvar - Goal
   const [goalType, setGoalType] = useState('');
   const [goalDesc, setGoalDesc] = useState('');
-  const [diet, setDiet] = useState('');
-  const [routine, setRoutine] = useState('');
+  
+  // States para salvar - Anamnese Básica
+  const [waterIntake, setWaterIntake] = useState('');
+  const [mealQuality, setMealQuality] = useState(5);
+  const [dietRestrictions, setDietRestrictions] = useState([]);
+  const [workoutDays, setWorkoutDays] = useState(0);
+  const [sleepHours, setSleepHours] = useState('');
+  const [sleepRestorative, setSleepRestorative] = useState('');
+  
   const [userId, setUserId] = useState(null);
 
   const totalSteps = 7;
@@ -40,6 +48,14 @@ const Onboarding = () => {
     }
   };
 
+  const handleRestrictionToggle = (restriction) => {
+    setDietRestrictions(prev => 
+      prev.includes(restriction) 
+        ? prev.filter(r => r !== restriction)
+        : [...prev, restriction]
+    );
+  };
+
   const handleFinish = async () => {
     if (!userId) {
       navigate('/dashboard');
@@ -57,13 +73,26 @@ const Onboarding = () => {
         });
       }
 
-      // Salva Anamnese base (diet + routine)
-      if (diet || routine) {
-        await supabase.from('medical_history').insert({
-          user_id: userId,
-          baseline_data: { diet, routine }
-        });
-      }
+      // Salva Anamnese Base (JSON)
+      const baselineData = {
+        water_intake: waterIntake,
+        meal_quality: mealQuality,
+        diet_restrictions: dietRestrictions,
+        workout_days: workoutDays,
+        sleep_hours: sleepHours,
+        sleep_restorative: sleepRestorative
+      };
+
+      await supabase.from('medical_history').insert({
+        user_id: userId,
+        baseline_data: baselineData
+      });
+
+      // Atualiza a flag na tabela de perfis
+      await supabase.from('profiles').update({
+        has_completed_onboarding: true
+      }).eq('id', userId);
+
     } catch (e) {
       console.error(e);
     } finally {
@@ -150,26 +179,70 @@ const Onboarding = () => {
         return (
           <div className="onboard-step-content fade-in">
             <h2>Alimentação & Hidratação</h2>
-            <p>Conte-nos sobre o seu padrão alimentar atual.</p>
-            <textarea 
-              className="goal-textarea large" 
-              placeholder="Descreva sua rotina alimentar, restrições, suplementação e o quanto de água costuma beber por dia..."
-              value={diet}
-              onChange={e => setDiet(e.target.value)}
-            />
+            <p>Conte-nos um pouco sobre a sua base nutricional.</p>
+            
+            <div style={{textAlign: 'left', marginTop: '20px'}}>
+              <label style={{display: 'block', marginBottom: '8px', color: '#fff', fontSize: '14px'}}>Quantos litros de água você bebe por dia?</label>
+              <div className="platform-options" style={{gridTemplateColumns: '1fr 1fr', gap: '8px'}}>
+                <button className={`platform-btn ${waterIntake === '< 1L' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setWaterIntake('< 1L')}>Menos de 1L</button>
+                <button className={`platform-btn ${waterIntake === '1 a 2L' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setWaterIntake('1 a 2L')}>1 a 2 Litros</button>
+                <button className={`platform-btn ${waterIntake === '2 a 3L' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setWaterIntake('2 a 3L')}>2 a 3 Litros</button>
+                <button className={`platform-btn ${waterIntake === '> 3L' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setWaterIntake('> 3L')}>Mais de 3L</button>
+              </div>
+
+              <label style={{display: 'block', marginTop: '24px', marginBottom: '8px', color: '#fff', fontSize: '14px'}}>Avalie a qualidade das suas refeições (0 a 10)</label>
+              <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+                <input type="range" min="0" max="10" value={mealQuality} onChange={e => setMealQuality(parseInt(e.target.value))} style={{flex: 1, accentColor: 'var(--primary)'}} />
+                <span style={{color: 'var(--primary)', fontWeight: 'bold', fontSize: '18px', width: '20px'}}>{mealQuality}</span>
+              </div>
+              <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)'}}>
+                <span>Ultraprocessados</span>
+                <span>Comida de Verdade</span>
+              </div>
+
+              <label style={{display: 'block', marginTop: '24px', marginBottom: '8px', color: '#fff', fontSize: '14px'}}>Você possui alguma restrição alimentar?</label>
+              <div style={{display: 'flex', flexWrap: 'wrap', gap: '10px'}}>
+                {['Vegano', 'Vegetariano', 'Celíaco', 'Intolerante a Lactose', 'Alergia Grave'].map(res => (
+                  <button 
+                    key={res}
+                    className={`goal-btn ${dietRestrictions.includes(res) ? 'active' : ''}`} 
+                    style={{padding: '6px 12px', fontSize: '12px'}}
+                    onClick={() => handleRestrictionToggle(res)}
+                  >
+                    {res}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         );
       case 6:
         return (
           <div className="onboard-step-content fade-in">
-            <h2>Vida Pessoal & Rotina</h2>
-            <p>O stress e o descanso são fundamentais. Como é sua rotina de trabalho e sono?</p>
-            <textarea 
-              className="goal-textarea large" 
-              placeholder="Trabalha sentado? Sofre de insônia? Como são seus horários..."
-              value={routine}
-              onChange={e => setRoutine(e.target.value)}
-            />
+            <h2>Movimento & Sono</h2>
+            <p>O descanso é tão importante quanto o treino.</p>
+            
+            <div style={{textAlign: 'left', marginTop: '20px'}}>
+              <label style={{display: 'block', marginBottom: '8px', color: '#fff', fontSize: '14px'}}>Quantos dias por semana você se exercita?</label>
+              <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+                <input type="range" min="0" max="7" value={workoutDays} onChange={e => setWorkoutDays(parseInt(e.target.value))} style={{flex: 1, accentColor: 'var(--primary)'}} />
+                <span style={{color: 'var(--primary)', fontWeight: 'bold', fontSize: '18px', width: '20px'}}>{workoutDays}</span>
+              </div>
+
+              <label style={{display: 'block', marginTop: '24px', marginBottom: '8px', color: '#fff', fontSize: '14px'}}>Quantas horas de sono por noite?</label>
+              <div className="platform-options" style={{gridTemplateColumns: '1fr 1fr', gap: '8px'}}>
+                <button className={`platform-btn ${sleepHours === '< 5h' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setSleepHours('< 5h')}>Menos de 5h</button>
+                <button className={`platform-btn ${sleepHours === '5-7h' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setSleepHours('5-7h')}>Entre 5h e 7h</button>
+                <button className={`platform-btn ${sleepHours === '7-8h' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setSleepHours('7-8h')}>Entre 7h e 8h</button>
+                <button className={`platform-btn ${sleepHours === '> 8h' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setSleepHours('> 8h')}>Mais de 8h</button>
+              </div>
+
+              <label style={{display: 'block', marginTop: '24px', marginBottom: '8px', color: '#fff', fontSize: '14px'}}>Você acorda com energia (sono restaurador)?</label>
+              <div className="platform-options" style={{gridTemplateColumns: '1fr 1fr', gap: '8px'}}>
+                <button className={`platform-btn ${sleepRestorative === 'Sim' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setSleepRestorative('Sim')}>Sim</button>
+                <button className={`platform-btn ${sleepRestorative === 'Não' ? 'active' : ''}`} style={{padding: '10px'}} onClick={() => setSleepRestorative('Não')}>Não</button>
+              </div>
+            </div>
           </div>
         );
       case 7:

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { User, Target, Activity, Save, AlertCircle, Sparkles, HeartPulse, Dna } from 'lucide-react';
+import { Target, Save, AlertCircle, Sparkles, Dna, ChevronDown, ChevronUp } from 'lucide-react';
 import './Profile.css';
 
 const Profile = () => {
@@ -9,9 +9,25 @@ const Profile = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [userId, setUserId] = useState(null);
 
-  // Form State
+  // Form State - Goal
   const [goal, setGoal] = useState({ goal_type: '', description: '' });
-  const [medicalHistory, setMedicalHistory] = useState({ allergies: '', chronic_diseases: '', family_history: '', filled_by_ai: false });
+  
+  // Form State - Medical History (Basic & Advanced)
+  const [history, setHistory] = useState({
+    filled_by_ai: false,
+    water_intake: '',
+    meal_quality: 5,
+    diet_restrictions: [],
+    workout_days: 0,
+    sleep_hours: '',
+    sleep_restorative: '',
+    chronic_diseases: '',
+    allergies: '', // Keep for retro-compatibility
+    family_history: '',
+    advanced_anamnesis: {}
+  });
+
+  const [expandedSection, setExpandedSection] = useState(null);
 
   const categories = [
     { id: 'Longevidade', label: 'Saúde & Longevidade' },
@@ -29,6 +45,16 @@ const Profile = () => {
       currentTypes.push(catId);
     }
     setGoal({ ...goal, goal_type: currentTypes.join(', ') });
+  };
+
+  const handleRestrictionToggle = (restriction) => {
+    setHistory(prev => {
+      const restr = prev.diet_restrictions || [];
+      return {
+        ...prev,
+        diet_restrictions: restr.includes(restriction) ? restr.filter(r => r !== restriction) : [...restr, restriction]
+      };
+    });
   };
 
   useEffect(() => {
@@ -63,13 +89,21 @@ const Profile = () => {
         .single();
 
       if (medicalData && medicalData.baseline_data) {
-        setMedicalHistory({
-          allergies: medicalData.baseline_data.allergies || '',
-          chronic_diseases: medicalData.baseline_data.chronic_diseases || '',
-          family_history: medicalData.baseline_data.family_history || ''
+        const b = medicalData.baseline_data;
+        setHistory({
+          filled_by_ai: b.filled_by_ai || false,
+          water_intake: b.water_intake || '',
+          meal_quality: b.meal_quality !== undefined ? b.meal_quality : 5,
+          diet_restrictions: b.diet_restrictions || [],
+          workout_days: b.workout_days || 0,
+          sleep_hours: b.sleep_hours || '',
+          sleep_restorative: b.sleep_restorative || '',
+          chronic_diseases: b.chronic_diseases || '',
+          allergies: b.allergies || '',
+          family_history: b.family_history || '',
+          advanced_anamnesis: b.advanced_anamnesis || {}
         });
       }
-
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
@@ -111,9 +145,17 @@ const Profile = () => {
         .single();
 
       const baselineData = {
-        allergies: medicalHistory.allergies,
-        chronic_diseases: medicalHistory.chronic_diseases,
-        family_history: medicalHistory.family_history
+        water_intake: history.water_intake,
+        meal_quality: history.meal_quality,
+        diet_restrictions: history.diet_restrictions,
+        workout_days: history.workout_days,
+        sleep_hours: history.sleep_hours,
+        sleep_restorative: history.sleep_restorative,
+        chronic_diseases: history.chronic_diseases,
+        allergies: history.allergies,
+        family_history: history.family_history,
+        advanced_anamnesis: history.advanced_anamnesis,
+        filled_by_ai: history.filled_by_ai
       };
 
       if (existingHistory) {
@@ -137,6 +179,20 @@ const Profile = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleSection = (section) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  const updateAdvanced = (key, value) => {
+    setHistory({
+      ...history,
+      advanced_anamnesis: {
+        ...history.advanced_anamnesis,
+        [key]: value
+      }
+    });
   };
 
   if (loading) return <div className="module-container" style={{display:'flex', alignItems:'center', justifyContent:'center'}}><div className="loader"></div></div>;
@@ -217,69 +273,156 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Card Direito: Anamnese */}
+        {/* Card Direito: Anamnese Básica */}
         <div className="profile-card">
           <div className="card-header" style={{ justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div className="icon-wrapper">
                 <Dna size={20} color="#fff" />
               </div>
-              <h2>Anamnese &amp; Genética</h2>
+              <h2>Anamnese & Genética</h2>
             </div>
-            {medicalHistory.filled_by_ai && (
+            {history.filled_by_ai && (
               <span style={{ fontSize: '11px', color: '#888', padding: '4px 8px', border: '1px solid #333', borderRadius: '4px' }}>
                 Preenchido por I.A.
               </span>
             )}
           </div>
 
-          <div className="card-body" style={{
-            flex: 1,
-            display: 'grid',
-            gridTemplateRows: 'auto 1fr',
-            gap: '24px',
-            minHeight: 0
-          }}>
-            <div className="form-group">
-              <label>Alergias ou Intolerâncias Sensíveis</label>
-              <input
-                type="text"
-                className="glass-input"
-                placeholder="Ex: Intolerância à lactose..."
-                value={medicalHistory.allergies}
-                onChange={e => setMedicalHistory({...medicalHistory, allergies: e.target.value})}
-              />
+          <div className="card-body" style={{ gap: '24px' }}>
+            
+            {/* Secão Básica */}
+            <div className="basic-anamnesis">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                <div className="form-group">
+                  <label>Consumo de Água (Diário)</label>
+                  <select className="glass-input" value={history.water_intake} onChange={e => setHistory({...history, water_intake: e.target.value})}>
+                    <option value="">Selecione...</option>
+                    <option value="< 1L">Menos de 1L</option>
+                    <option value="1 a 2L">1 a 2 Litros</option>
+                    <option value="2 a 3L">2 a 3 Litros</option>
+                    <option value="> 3L">Mais de 3L</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Qualidade da Dieta (0 a 10)</label>
+                  <input type="range" min="0" max="10" className="glass-input" style={{padding:0, height:'2px'}} value={history.meal_quality} onChange={e => setHistory({...history, meal_quality: parseInt(e.target.value)})} />
+                  <div style={{textAlign:'center', color:'var(--primary)', fontWeight:'bold', marginTop:'5px'}}>{history.meal_quality} / 10</div>
+                </div>
+              </div>
+
+              <div className="form-group" style={{marginBottom: '20px'}}>
+                <label>Restrições Alimentares</label>
+                <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                  {['Vegano', 'Vegetariano', 'Celíaco', 'Intolerante a Lactose', 'Alergia Grave'].map(res => (
+                    <button 
+                      key={res}
+                      className={`pill-btn ${(history.diet_restrictions || []).includes(res) ? 'active' : ''}`}
+                      onClick={() => handleRestrictionToggle(res)}
+                      style={{padding: '4px 10px', fontSize: '12px'}}
+                    >
+                      {res}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                <div className="form-group">
+                  <label>Dias de Treino na Semana</label>
+                  <select className="glass-input" value={history.workout_days} onChange={e => setHistory({...history, workout_days: parseInt(e.target.value)})}>
+                    {[0,1,2,3,4,5,6,7].map(n => <option key={n} value={n}>{n} dias</option>)}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Horas de Sono por Noite</label>
+                  <select className="glass-input" value={history.sleep_hours} onChange={e => setHistory({...history, sleep_hours: e.target.value})}>
+                    <option value="">Selecione...</option>
+                    <option value="< 5h">Menos de 5h</option>
+                    <option value="5-7h">Entre 5 e 7h</option>
+                    <option value="7-8h">Entre 7 e 8h</option>
+                    <option value="> 8h">Mais de 8h</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group" style={{marginBottom: '20px'}}>
+                <label>Condições Crônicas, Lesões ou Remédios Frequentes</label>
+                <textarea
+                  className="glass-input unified-textarea"
+                  style={{ minHeight: '80px', resize: 'none' }}
+                  placeholder="Ex: Asma grau 1, hipertensão, uso de roacutan..."
+                  value={history.chronic_diseases}
+                  onChange={e => setHistory({...history, chronic_diseases: e.target.value})}
+                />
+              </div>
             </div>
 
-            {/* Grid de dois textareas — cresce para preencher o card */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '20px',
-              minHeight: 0
+            {/* Expansão Avançada */}
+            <div className="advanced-anamnesis-toggle" onClick={() => toggleSection('advanced')} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', 
+              padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px',
+              cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)', marginTop: '10px'
             }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
-                <label style={{ color: '#888', fontSize: '13px', flexShrink: 0 }}>Condições Crônicas / Lesões</label>
-                <textarea
-                  className="glass-input unified-textarea"
-                  style={{ flex: 1, width: '100%', minHeight: '120px', boxSizing: 'border-box', resize: 'none' }}
-                  placeholder="Ex: Asma grau 1, hipertensão..."
-                  value={medicalHistory.chronic_diseases}
-                  onChange={e => setMedicalHistory({...medicalHistory, chronic_diseases: e.target.value})}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
-                <label style={{ color: '#888', fontSize: '13px', flexShrink: 0 }}>Histórico Familiar</label>
-                <textarea
-                  className="glass-input unified-textarea"
-                  style={{ flex: 1, width: '100%', minHeight: '120px', boxSizing: 'border-box', resize: 'none' }}
-                  placeholder="Ex: Pai diabético tipo 2..."
-                  value={medicalHistory.family_history}
-                  onChange={e => setMedicalHistory({...medicalHistory, family_history: e.target.value})}
-                />
-              </div>
+              <span style={{color: 'var(--text-main)', fontSize: '14px', fontWeight: '500'}}>
+                {expandedSection === 'advanced' ? 'Esconder Anamnese Completa' : 'Expandir Anamnese Completa'}
+              </span>
+              {expandedSection === 'advanced' ? <ChevronUp size={16} color="var(--text-muted)"/> : <ChevronDown size={16} color="var(--text-muted)"/>}
             </div>
+
+            {expandedSection === 'advanced' && (
+              <div className="advanced-sections fade-in" style={{marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                
+                {/* Seção: Saúde Digestiva */}
+                <div className="form-group" style={{background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px'}}>
+                  <label style={{color: '#fff', marginBottom: '12px'}}>Saúde Digestiva e Intestinal</label>
+                  
+                  <label style={{fontSize: '12px'}}>Formato das Fezes</label>
+                  <select className="glass-input" style={{marginBottom: '12px'}} value={history.advanced_anamnesis.bowel_type || ''} onChange={e => updateAdvanced('bowel_type', e.target.value)}>
+                    <option value="">Selecione...</option>
+                    <option value="Duras">Duras/Compactadas</option>
+                    <option value="Firmes">Firmes</option>
+                    <option value="Macias">Macias/Pastosas</option>
+                    <option value="Soltas">Soltas/Líquidas</option>
+                  </select>
+
+                  <label style={{fontSize: '12px'}}>Frequência de Evacuação</label>
+                  <select className="glass-input" value={history.advanced_anamnesis.bowel_freq || ''} onChange={e => updateAdvanced('bowel_freq', e.target.value)}>
+                    <option value="">Selecione...</option>
+                    <option value="A cada 2+ dias">A cada 2 dias ou mais</option>
+                    <option value="1x/dia">1 vez ao dia</option>
+                    <option value="2x/dia">2 vezes ao dia</option>
+                    <option value="3+/dia">3 ou mais vezes ao dia</option>
+                  </select>
+                </div>
+
+                {/* Seção: Saúde Mental */}
+                <div className="form-group" style={{background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px'}}>
+                  <label style={{color: '#fff', marginBottom: '12px'}}>Saúde Mental e Foco</label>
+                  
+                  <label style={{fontSize: '12px'}}>Nível de Estresse/Ansiedade (0-10)</label>
+                  <input type="range" min="0" max="10" className="glass-input" style={{padding:0, height:'2px', marginBottom:'16px'}} value={history.advanced_anamnesis.stress_level || 0} onChange={e => updateAdvanced('stress_level', parseInt(e.target.value))} />
+                  
+                  <label style={{fontSize: '12px'}}>Estratégias de Relaxamento que Utiliza</label>
+                  <input type="text" className="glass-input" placeholder="Ex: Terapia, Yoga, Meditação..." value={history.advanced_anamnesis.relax_strategies || ''} onChange={e => updateAdvanced('relax_strategies', e.target.value)}/>
+                </div>
+
+                {/* Seção: Sintomas Gerais */}
+                <div className="form-group" style={{background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '12px'}}>
+                  <label style={{color: '#fff', marginBottom: '12px'}}>Sintomas Frequentes</label>
+                  <textarea 
+                    className="glass-input unified-textarea" 
+                    style={{minHeight: '80px', resize: 'none'}} 
+                    placeholder="Descreva se sente dores de cabeça, queimação, fadiga, queda de cabelo, etc..."
+                    value={history.advanced_anamnesis.symptoms || ''}
+                    onChange={e => updateAdvanced('symptoms', e.target.value)}
+                  />
+                </div>
+
+              </div>
+            )}
           </div>
         </div>
 

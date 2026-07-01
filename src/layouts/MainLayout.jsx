@@ -26,7 +26,7 @@ import logo from '../assets/logo.png';
 import './MainLayout.css';
 import { AgentChatProvider, useAgentChat } from '../context/AgentChatContext';
 
-const APP_VERSION = 'v1.9.2';
+const APP_VERSION = 'v1.10.0';
 
 // Global Agents Configuration
 const AGENTS = [
@@ -44,7 +44,7 @@ const MainLayoutContent = () => {
   const messagesEndRef = useRef(null);
   
   // Floating Chat State from Context
-  const { isOpen, setIsOpen, activeAgentId, setActiveAgentId, conversations, setConversations } = useAgentChat();
+  const { isOpen, setIsOpen, activeAgentId, setActiveAgentId, conversations, setConversations, chatContext, globalUserContext } = useAgentChat();
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -139,7 +139,7 @@ const MainLayoutContent = () => {
           messages: [
             { 
               role: 'system', 
-              content: `Você é o ${activeAgent.name}, um agente inteligente da plataforma Apogeu especializada em saúde e esporte de alto rendimento. Responda de forma extremamente objetiva, curta, premium e inteligente em português.` 
+              content: `Você é o ${activeAgent.name}, um agente inteligente da plataforma Apogeu especializada em saúde e esporte de alto rendimento. Responda de forma extremamente objetiva, curta, premium e inteligente em português.\n\nDADOS HISTÓRICOS E REAIS DO USUÁRIO LOGADO:\n${globalUserContext || 'Sem dados históricos carregados do perfil.'}\n\n${chatContext ? `CONTEXTO ADICIONAL DA TELA ATUAL:\n${chatContext}` : ''}` 
             },
             ...currentHistory.map(m => ({ role: m.role, content: m.text })),
             { role: 'user', content: textToSend }

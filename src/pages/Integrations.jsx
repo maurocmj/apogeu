@@ -14,6 +14,7 @@ const Integrations = () => {
   const [showRealSyncModal, setShowRealSyncModal] = useState(false);
   const [sessionToken, setSessionToken] = useState('');
   const [healthSyncToken, setHealthSyncToken] = useState('');
+  const [garminConnected, setGarminConnected] = useState(false);
   const [rotatingToken, setRotatingToken] = useState(false);
 
 
@@ -37,15 +38,16 @@ const Integrations = () => {
       if (error) throw error;
       setConnection(data);
 
-      // Fetch health_sync_token from profiles
+      // Fetch health_sync_token and garmin token from profiles
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('health_sync_token')
+        .select('health_sync_token, garmin_access_token')
         .eq('id', session.user.id)
         .maybeSingle();
 
       if (!profileError && profile) {
         setHealthSyncToken(profile.health_sync_token || '');
+        setGarminConnected(!!profile.garmin_access_token);
       }
     } catch (err) {
       console.error('Error fetching connection status:', err);
@@ -95,6 +97,24 @@ const Integrations = () => {
     // Redirect to Strava OAuth
     const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
     window.location.href = authUrl;
+  };
+
+  const handleConnectGarmin = async () => {
+    setMessage({ type: '', text: '' });
+    try {
+      const { data, error } = await supabase.functions.invoke('garmin-auth', {
+        method: 'GET'
+      });
+      
+      if (error || !data?.url) {
+        throw new Error(error?.message || 'Falha ao gerar URL de autorização da Garmin');
+      }
+      
+      window.location.href = data.url;
+    } catch (err) {
+      console.error('Error connecting Garmin:', err);
+      setMessage({ type: 'error', text: `Erro ao conectar Garmin: ${err.message}` });
+    }
   };
 
   const handleSync = async () => {
@@ -229,13 +249,13 @@ const Integrations = () => {
       </header>
 
       {message.text && (
-        <div className={`toast-notification ${message.type}`} style={{ marginBottom: '24px', width: '100%', maxWidth: '850px' }}>
+        <div className={`toast-notification ${message.type}`} style={{ marginBottom: '24px', width: '100%', maxWidth: '1200px' }}>
           {message.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
           <span>{message.text}</span>
         </div>
       )}
 
-      <div className="integrations-grid" style={{ width: '100%', maxWidth: '850px' }}>
+      <div className="integrations-grid" style={{ width: '100%', maxWidth: '1200px' }}>
         {/* Card do Strava */}
         <div className={`glass integration-card hover-glow ${connection ? 'connected' : ''}`} style={{ margin: 0 }}>
           <div className="card-header-row">
@@ -375,6 +395,66 @@ const Integrations = () => {
               >
                 Configurar Sincronização Real
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Card do Garmin */}
+        <div className={`glass integration-card hover-glow ${garminConnected ? 'connected' : ''}`} style={{ margin: 0 }}>
+          <div className="card-header-row">
+            <div className="brand-badge-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="#000000" style={{ display: 'block', backgroundColor: '#fff', borderRadius: '4px', padding: '2px' }}>
+                  <path d="M11.96 0L0 7l4.58 13.97h14.86L24 7l-12.04-7zm-4.7 9.87h9.4l-1.92 6.13H9.19l-1.93-6.13z"/>
+                </svg>
+                <span className="brand-logo" style={{ color: '#fff', fontSize: '18px', fontWeight: 600 }}>Garmin</span>
+              </div>
+              <span className={`status-badge ${garminConnected ? 'connected' : 'disconnected'}`}>
+                {garminConnected ? 'Conectado' : 'Disponível'}
+              </span>
+            </div>
+          </div>
+
+          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <p>
+              Sincronize automaticamente seus dados de sono, estresse, frequência cardíaca e treinos diretamente da nuvem da Garmin. 
+              Nenhum aplicativo adicional necessário no seu celular.
+            </p>
+
+            {garminConnected ? (
+               <div className="connection-details">
+                 <div className="detail-row">
+                   <span className="label">Status:</span>
+                   <span className="value">Recebendo Webhooks</span>
+                 </div>
+               </div>
+            ) : (
+              <div className="features-list">
+                <div className="feature-item">
+                  <Moon size={14} color="#00a3e0" />
+                  <span>Sincronização 100% na Nuvem (Cloud-to-Cloud)</span>
+                </div>
+                <div className="feature-item">
+                  <Activity size={14} color="#00a3e0" />
+                  <span>Integração de Webhooks em Tempo Real</span>
+                </div>
+              </div>
+            )}
+
+            <div className="card-actions" style={{ marginTop: 'auto' }}>
+              {garminConnected ? (
+                <button 
+                  className="btn-disconnect" 
+                  onClick={() => alert("Desconexão ainda não implementada")}
+                >
+                  <Trash2 size={18} />
+                  Desconectar
+                </button>
+              ) : (
+                <button className="btn-connect-strava" onClick={handleConnectGarmin} style={{ backgroundColor: '#00a3e0', color: '#fff', border: 'none' }}>
+                  Conectar Conta Garmin <ArrowRight size={18} />
+                </button>
+              )}
             </div>
           </div>
         </div>

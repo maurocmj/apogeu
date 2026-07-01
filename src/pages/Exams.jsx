@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Upload, FileText, Search, ExternalLink, ShieldAlert, Target, Loader2, Save, Info, Download, ChevronDown, ChevronUp, Activity, Heart, Calendar, AlertTriangle, Trash2, RefreshCw, TrendingUp } from 'lucide-react';
+import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabaseClient';
 import AgentBubbleCard from '../components/AgentBubbleCard';
 import ActionPlanCard from '../components/ActionPlanCard';
 import HealthRadarChart from '../components/HealthRadarChart';
 import HealthScoreTimelineChart from '../components/HealthScoreTimelineChart';
+import { useAgentChat } from '../context/AgentChatContext';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
@@ -32,6 +34,7 @@ const extractTextFromPDF = async (file) => {
 };
 
 const Exams = () => {
+  const { setChatContext, refreshGlobalUserContext } = useAgentChat();
   const [uploading, setUploading] = useState(false);
   const [exams, setExams] = useState([]);
   const [userId, setUserId] = useState(null);
@@ -42,6 +45,32 @@ const Exams = () => {
   const [evolutionSummary, setEvolutionSummary] = useState('');
   const [loadingEvolution, setLoadingEvolution] = useState(false);
   const [chartTooltip, setChartTooltip] = useState({ isOpen: false, key: '', history: [], x: 0, y: 0 });
+  const [userGoal, setUserGoal] = useState('Longevidade');
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [bioSearch, setBioSearch] = useState('');
+  const [bioPage, setBioPage] = useState(1);
+
+  useEffect(() => {
+    if (exams && exams.length > 0) {
+      const processed = exams.filter(e => e.status === 'processed');
+      if (processed.length > 0) {
+        const examContext = processed.map(e => 
+          `Exame: ${e.exam_type} (Data: ${new Date(e.collection_date).toLocaleDateString('pt-BR')}). Biomarcadores: ${JSON.stringify(e.biomarkers)}`
+        ).join('\n\n');
+        setChatContext(examContext);
+      } else {
+        setChatContext('Nenhum exame clínico processado ainda.');
+      }
+    } else {
+      setChatContext('Nenhum exame cadastrado no perfil do usuário.');
+    }
+    
+    refreshGlobalUserContext();
+    
+    return () => {
+      setChatContext('');
+    };
+  }, [exams, setChatContext, refreshGlobalUserContext]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -51,6 +80,15 @@ const Exams = () => {
         // Carrega análise salva imediatamente (sem esperar API)
         const cached = localStorage.getItem(`evolutionSummary_${session.user.id}`);
         if (cached) setEvolutionSummary(cached);
+
+        // Fetch User Goal
+        supabase.from('user_goals').select('goal_type').eq('user_id', session.user.id).eq('is_active', true).single()
+          .then(({ data }) => {
+            if (data && data.goal_type) {
+              const types = data.goal_type.split(',').map(s => s.trim());
+              if (types.length > 0) setUserGoal(types[0]);
+            }
+          });
       }
     });
 
@@ -536,14 +574,14 @@ const Exams = () => {
           </div>
         </div>
 
-        {/* Card 3: Medical Agent + Plano de Ação */}
+        {/* Card 3: LAUDO ATUAL + Plano de Ação */}
         <div className="glass" style={{ borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Heart size={16} color="#10b981" /> Medical Agent
+              <h3 style={{ margin: 0, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px', textTransform: 'uppercase' }}>
+                <Heart size={16} color="#10b981" /> Laudo Atual
               </h3>
-              <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>Análise clínica personalizada</p>
+              <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>Análise clínica do Medical Agent</p>
             </div>
           </div>
 
@@ -565,12 +603,249 @@ const Exams = () => {
         </div>
       </div>
 
-      {/* ── LINHA 2: Tabela de Exames full-width ── */}
       <div className="glass" style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '32px' }}>
         <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity color="var(--primary)" size={20} /> Histórico de Exames
-          </h3>
+          <div>
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <TrendingUp color="var(--primary)" size={20} /> Evolução de Biomarcadores
+            </h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+              Focados no seu objetivo atual: <strong style={{ color: '#fff' }}>{userGoal}</strong>
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '8px' }}>
+            <Search size={14} color="var(--text-muted)" />
+            <input 
+              type="text" 
+              placeholder="Buscar biomarcador..." 
+              value={bioSearch} 
+              onChange={e => { setBioSearch(e.target.value); setBioPage(1); }} 
+              style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', fontSize: '12px', width: '160px' }} 
+            />
+          </div>
+        </div>
+        <div style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ position: 'sticky', top: 0, background: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Biomarcador</th>
+                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>Curva</th>
+                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Histórico de Resultados</th>
+                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Relevância</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const getBiomarkerEvolution = (examsList, goal) => {
+                  if (!examsList || examsList.length === 0) return [];
+                  
+                  const priorities = {
+                    'Emagrecimento': ['glicose', 'insulina', 'homa', 'colesterol', 'hdl', 'ldl', 'triglicerideos', 'tsh', 't4'],
+                    'Hipertrofia': ['testosterona', 'shbg', 'cpk', 'creatinina', 'ferritina', 'vitamina_d'],
+                    'Longevidade': ['pcr', 'hdl', 'ldl', 'triglicerideos', 'glicada', 'b12', 'dhea'],
+                    'Performance': ['ferritina', 'hemoglobina', 'cpk', 'testosterona', 'cortisol'],
+                    'Recuperacao': ['pcr', 'ck', 'leucocitos']
+                  };
+                  
+                  const targetList = priorities[goal] || priorities['Longevidade'];
+                  
+                  const sortedExams = [...examsList]
+                    .filter(e => e.status === 'processed' && e.biomarkers)
+                    .sort((a, b) => new Date(a.collection_date) - new Date(b.collection_date));
+                  
+                  const map = {};
+                  
+                  sortedExams.forEach(exam => {
+                    Object.entries(exam.biomarkers).forEach(([key, val]) => {
+                      const lowerKey = key.toLowerCase();
+                      
+                      let foundKey = Object.keys(map).find(k => k.toLowerCase() === lowerKey);
+                      if (!foundKey) {
+                        foundKey = key;
+                        map[foundKey] = {
+                          name: key,
+                          history: [],
+                          isPriority: targetList.some(p => lowerKey.includes(p))
+                        };
+                      }
+                      
+                      const valueStr = typeof val === 'object' ? val.value : val;
+                      const status = typeof val === 'object' ? val.status : 'normal';
+                      const dateStr = new Date(exam.collection_date).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+                      
+                      map[foundKey].history.push({ value: valueStr, status: status, date: dateStr, examId: exam.id });
+                    });
+                  });
+                  
+                  return Object.values(map).sort((a, b) => {
+                    if (a.isPriority && !b.isPriority) return -1;
+                    if (!a.isPriority && b.isPriority) return 1;
+                    return a.name.localeCompare(b.name);
+                  });
+                };
+
+                let bioList = getBiomarkerEvolution(exams, userGoal);
+                
+                if (bioSearch) {
+                  bioList = bioList.filter(b => b.name.toLowerCase().includes(bioSearch.toLowerCase()));
+                }
+                
+                const totalPages = Math.ceil(bioList.length / 8);
+                const startIndex = (bioPage - 1) * 8;
+                const pagedList = bioList.slice(startIndex, startIndex + 8);
+
+                if (bioList.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum biomarcador encontrado.</td>
+                    </tr>
+                  );
+                }
+
+                return pagedList.map((bio, idx) => {
+                  const sparklineData = bio.history.map(h => {
+                    const numMatch = String(h.value).match(/[\d.]+/);
+                    return { date: h.date, num: numMatch ? parseFloat(numMatch[0]) : 0 };
+                  });
+                  const hasData = sparklineData.some(d => d.num > 0);
+
+                  return (
+                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', background: bio.isPriority ? 'rgba(255,255,255,0.015)' : 'transparent' }}>
+                    <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '500', color: bio.isPriority ? '#fff' : 'rgba(255,255,255,0.8)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {bio.name}
+                        <div onMouseEnter={(e) => handleMouseEnter(e, bio.name)} onMouseLeave={handleMouseLeave} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help' }}>
+                          {loadingInfo[bio.name] ? (
+                            <Loader2 size={12} className="animate-spin" color="var(--primary)" />
+                          ) : (
+                            <Info size={12} color="var(--text-muted)" />
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                      {hasData && bio.history.length > 1 ? (
+                        <div style={{ width: '60px', height: '24px', margin: '0 auto', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '2px 4px' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={sparklineData}>
+                              <YAxis domain={['dataMin', 'dataMax']} hide />
+                              <Line type="monotone" dataKey="num" stroke={bio.isPriority ? "var(--primary)" : "#64748b"} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>-</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '16px 24px', fontSize: '13px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        {bio.history.map((h, i) => {
+                          let color = 'var(--text-muted)';
+                          let bg = 'rgba(255,255,255,0.05)';
+                          if (h.status === 'attention' || h.status === 'high') {
+                            color = '#f59e0b'; bg = 'rgba(245, 158, 11, 0.15)';
+                          } else if (h.status === 'critical') {
+                            color = '#ef4444'; bg = 'rgba(239, 68, 68, 0.15)';
+                          } else if (h.status === 'normal') {
+                            color = '#10b981'; bg = 'rgba(16, 185, 129, 0.15)';
+                          }
+                          
+                          return (
+                            <React.Fragment key={i}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4px 8px', borderRadius: '6px', background: bg, border: `1px solid ${bg.replace('0.15', '0.3')}` }}>
+                                <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '2px' }}>{h.date}</span>
+                                <strong style={{ color: color, fontSize: '12px' }}>{h.value}</strong>
+                              </div>
+                              {i < bio.history.length - 1 && <span style={{ color: 'rgba(255,255,255,0.1)' }}>➔</span>}
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px 24px' }}>
+                      {bio.isPriority ? (
+                        <span style={{ fontSize: '10px', background: 'rgba(0, 229, 255, 0.15)', color: 'var(--primary)', padding: '4px 8px', borderRadius: '4px', fontWeight: '600', border: '1px solid rgba(0,229,255,0.3)' }}>
+                          ALVO DO OBJETIVO
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Padrão</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+                })
+              })()}
+            </tbody>
+          </table>
+        </div>
+        {/* Render Paginação if needed, outside the IIFE */}
+        {(() => {
+          let bioList = [];
+          if (exams && exams.length > 0) {
+            // Recalculate just length for pagination
+            const getBiomarkerEvolution = (examsList, goal) => {
+              const targetList = ['glicose'];
+              const map = {};
+              examsList.filter(e => e.status === 'processed' && e.biomarkers).forEach(exam => {
+                Object.keys(exam.biomarkers).forEach(key => map[key] = true);
+              });
+              return Object.keys(map).map(k => ({name: k}));
+            };
+            bioList = getBiomarkerEvolution(exams, userGoal);
+            if (bioSearch) bioList = bioList.filter(b => b.name.toLowerCase().includes(bioSearch.toLowerCase()));
+          }
+          const totalPages = Math.ceil(bioList.length / 8);
+          if (totalPages > 1) {
+            return (
+              <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '16px' }}>
+                <button 
+                  onClick={() => setBioPage(p => Math.max(1, p - 1))} 
+                  disabled={bioPage === 1}
+                  style={{ background: 'transparent', border: 'none', color: bioPage === 1 ? 'var(--text-muted)' : '#fff', cursor: bioPage === 1 ? 'not-allowed' : 'pointer', fontSize: '13px' }}
+                >
+                  Anterior
+                </button>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{bioPage} de {totalPages}</span>
+                <button 
+                  onClick={() => setBioPage(p => Math.min(totalPages, p + 1))} 
+                  disabled={bioPage === totalPages}
+                  style={{ background: 'transparent', border: 'none', color: bioPage === totalPages ? 'var(--text-muted)' : '#fff', cursor: bioPage === totalPages ? 'not-allowed' : 'pointer', fontSize: '13px' }}
+                >
+                  Próximo
+                </button>
+              </div>
+            );
+          }
+          return null;
+        })()}
+      </div>
+
+      {/* ── LINHA 3: Tabela de Exames (Colapsável) ── */}
+      <div className="glass" style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '32px' }}>
+        <div style={{ padding: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Activity color="var(--primary)" size={20} /> Histórico de Exames Cadastrados
+            </h3>
+            <button 
+              onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#fff',
+                padding: '4px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              {isHistoryExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {isHistoryExpanded ? 'Ocultar' : `Ver Exames (${exams.length})`}
+            </button>
+          </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <label style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
@@ -596,24 +871,24 @@ const Exams = () => {
             </label>
           </div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Exame</th>
-                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Data</th>
-                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Laboratório</th>
-                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Status</th>
-                <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'right', color: 'var(--text-muted)', fontSize: '12px' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {exams.length === 0 && (
-                <tr>
-                  <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum laudo cadastrado ainda.</td>
+        {isHistoryExpanded && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Exame</th>
+                  <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Data</th>
+                  <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Laboratório</th>
+                  <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'left', color: 'var(--text-muted)', fontSize: '12px' }}>Status</th>
+                  <th style={{ padding: '16px 24px', fontWeight: '500', textAlign: 'right', color: 'var(--text-muted)', fontSize: '12px' }}>Ações</th>
                 </tr>
-              )}
+              </thead>
+              <tbody>
+                {exams.length === 0 && (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum laudo cadastrado ainda.</td>
+                  </tr>
+                )}
               {exams.map(exam => (
                 <React.Fragment key={exam.id}>
                   <tr
@@ -701,10 +976,11 @@ const Exams = () => {
                     </tr>
                   )}
                 </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Tooltip Info */}

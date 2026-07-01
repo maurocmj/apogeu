@@ -11,15 +11,15 @@ const categoryMapping = {
 };
 
 const tooltipsInfo = {
-  'Cardiovascular': 'Saúde do coração e sistema circulatório (Ex: Colesterol, Pressão)',
-  'Metabólico': 'Processamento de energia e peso (Ex: Glicose, Tireoide, IMC)',
-  'Neurológico': 'Saúde mental, sono e estresse (Ex: Cortisol, Ansiedade)',
-  'Imunológico': 'Defesas do organismo (Ex: Linfócitos, Imunidade)',
-  'Órgãos Vitais': 'Funcionamento de Rins, Fígado e Pulmão',
-  'Estrutural': 'Ossos, músculos e lesões (Ex: Vitamina D, Testosterona)'
+  'Cardiovascular': 'Cardiovascular: Base 5 pts. Penalizado por marcadores alterados (ex: colesterol, triglicerídeos, PA).',
+  'Metabólico': 'Metabólico: Base 5 pts. Penalizado por marcadores alterados (ex: glicose, tireoide, peso/IMC).',
+  'Neurológico': 'Neurológico: Base 5 pts. Penalizado por marcadores alterados (ex: cortisol, B12, sódio, potássio).',
+  'Imunológico': 'Imunológico: Base 5 pts. Penalizado por marcadores alterados (ex: leucócitos, plaquetas, sorologias).',
+  'Órgãos Vitais': 'Órgãos Vitais: Base 5 pts. Penalizado por marcadores alterados (ex: creatinina, TGO/TGP, bilirrubina).',
+  'Estrutural': 'Estrutural: Base 5 pts. Penalizado por marcadores alterados (ex: cálcio, vitamina D, testosterona, lesões).'
 };
 
-const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index, hasData }) => {
+const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index, hasData, setTooltipInfo }) => {
   return (
     <text
       radius={radius}
@@ -32,8 +32,10 @@ const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index, hasData 
       fontSize={12}
       fontWeight={hasData ? 600 : 400}
       style={{ cursor: 'help' }}
+      onMouseEnter={(e) => setTooltipInfo({ text: tooltipsInfo[payload.value] || payload.value, title: payload.value, x: e.clientX, y: e.clientY })}
+      onMouseMove={(e) => setTooltipInfo({ text: tooltipsInfo[payload.value] || payload.value, title: payload.value, x: e.clientX, y: e.clientY })}
+      onMouseLeave={() => setTooltipInfo(null)}
     >
-      <title>{tooltipsInfo[payload.value] || payload.value}</title>
       <tspan x={x} dy="0em">{payload.value}</tspan>
       {!hasData && (
         <tspan x={x} dy="1.4em" fontSize={10} fill="var(--text-muted)" fontWeight={400}>
@@ -45,6 +47,8 @@ const CustomTick = ({ payload, x, y, textAnchor, stroke, radius, index, hasData 
 };
 
 const HealthRadarChart = ({ exams = [] }) => {
+  const [tooltipInfo, setTooltipInfo] = React.useState(null);
+
   const chartData = useMemo(() => {
     const allBiomarkers = {};
     
@@ -112,7 +116,7 @@ const HealthRadarChart = ({ exams = [] }) => {
           
           <PolarAngleAxis 
             dataKey="subject" 
-            tick={(props) => <CustomTick {...props} hasData={chartData[props.index]?.hasData} />} 
+            tick={(props) => <CustomTick {...props} hasData={chartData[props.index]?.hasData} setTooltipInfo={setTooltipInfo} />} 
           />
           
           <PolarRadiusAxis angle={30} domain={[0, 5]} tick={false} axisLine={false} />
@@ -137,6 +141,29 @@ const HealthRadarChart = ({ exams = [] }) => {
           />
         </RadarChart>
       </ResponsiveContainer>
+      
+      {tooltipInfo && (
+        <div style={{
+          position: 'fixed',
+          top: tooltipInfo.y + 15,
+          left: tooltipInfo.x + 15,
+          zIndex: 9999,
+          background: 'rgba(15, 23, 42, 0.95)',
+          padding: '12px 16px',
+          border: '1px solid rgba(0, 229, 255, 0.3)',
+          borderRadius: '12px',
+          color: '#fff',
+          fontSize: '13px',
+          lineHeight: '1.5',
+          maxWidth: '260px',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 229, 255, 0.1)',
+          pointerEvents: 'none'
+        }}>
+          <strong style={{ display: 'block', color: '#00e5ff', marginBottom: '4px', fontSize: '14px' }}>{tooltipInfo.title}</strong>
+          {tooltipInfo.text.split(': ')[1] || tooltipInfo.text}
+        </div>
+      )}
     </div>
   );
 };

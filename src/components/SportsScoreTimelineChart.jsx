@@ -7,23 +7,83 @@ const themes = [
   { key: 'Intensidade', color: '#10b981' }
 ];
 
-const mockTimelineData = [
-  { name: 'Semana 1', 'Carga de Treino': 45, 'Volume': 40, 'Intensidade': 50 },
-  { name: 'Semana 2', 'Carga de Treino': 55, 'Volume': 50, 'Intensidade': 60 },
-  { name: 'Semana 3', 'Carga de Treino': 50, 'Volume': 45, 'Intensidade': 55 },
-  { name: 'Semana 4', 'Carga de Treino': 65, 'Volume': 60, 'Intensidade': 70 },
-  { name: 'Semana 5', 'Carga de Treino': 80, 'Volume': 75, 'Intensidade': 85 },
-  { name: 'Atual', 'Carga de Treino': 85, 'Volume': 80, 'Intensidade': 90 }
-];
+
 
 const SportsScoreTimelineChart = ({ activities = [] }) => {
   const [hoveredLine, setHoveredLine] = useState(null);
 
   const chartData = useMemo(() => {
-    // Para simplificar, vamos usar dados mock baseados no número de atividades
-    // Se não tiver atividades, joga tudo pra perto de zero ou não exibe.
     if (!activities || activities.length === 0) return [];
-    return mockTimelineData;
+
+    // Filter out activities without rawDate
+    const validActivities = activities.filter(a => a.rawDate);
+    if (validActivities.length === 0) return [];
+
+    // Sort ascending by date
+    const sorted = [...validActivities].sort((a, b) => new Date(a.rawDate) - new Date(b.rawDate));
+
+    // Group by week (using ISO week roughly or just a 7-day chunk from the earliest activity)
+    // Actually, grouping by ISO week is better:
+    const getWeekKey = (date) => {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7); // Thursday of the week
+      const week1 = new Date(d.getFullYear(), 0, 4); // First week of year
+      const weekNumber = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+      return `${d.getFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
+    };
+
+    const weeksMap = {};
+    sorted.forEach(act => {
+      const wk = getWeekKey(act.rawDate);
+      if (!weeksMap[wk]) {
+        // Find Monday of this week for display
+        const d = new Date(act.rawDate);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+        const monday = new Date(d.setDate(diff));
+        
+        weeksMap[wk] = {
+          weekKey: wk,
+          name: `${monday.getDate().toString().padStart(2, '0')}/${(monday.getMonth()+1).toString().padStart(2, '0')}`,
+          rawLoad: 0,
+          rawVolume: 0,
+          count: 0
+        };
+      }
+      weeksMap[wk].rawLoad += (act.effort || 0);
+      weeksMap[wk].rawVolume += (act.rawTime || 0); // seconds
+      weeksMap[wk].count += 1;
+    });
+
+    const weeks = Object.values(weeksMap).sort((a, b) => a.weekKey.localeCompare(b.weekKey));
+
+    // Calculate intensidades and find max for normalization
+    let maxLoad = 0.1;
+    let maxVol = 0.1;
+    let maxInt = 0.1;
+
+    weeks.forEach(w => {
+      w.rawIntensidade = w.count > 0 ? (w.rawLoad / w.count) : 0;
+      if (w.rawLoad > maxLoad) maxLoad = w.rawLoad;
+      if (w.rawVolume > maxVol) maxVol = w.rawVolume;
+      if (w.rawIntensidade > maxInt) maxInt = w.rawIntensidade;
+    });
+
+    // Normalize 0-100
+    const finalData = weeks.map(w => ({
+      name: w.name,
+      'Carga de Treino': Math.min(100, Math.round((w.rawLoad / maxLoad) * 100)),
+      'Volume': Math.min(100, Math.round((w.rawVolume / maxVol) * 100)),
+      'Intensidade': Math.min(100, Math.round((w.rawIntensidade / maxInt) * 100))
+    }));
+
+    // If only one week exists, duplicate it to form a line
+    if (finalData.length === 1) {
+      finalData.unshift({ ...finalData[0], name: 'Início' });
+    }
+
+    return finalData.slice(-6); // Keep max last 6 weeks
   }, [activities]);
 
   const getLineOpacity = (key) => {

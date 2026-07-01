@@ -6,6 +6,7 @@ import AgentBubbleCard from '../components/AgentBubbleCard';
 import ActionPlanCard from '../components/ActionPlanCard';
 import SportsRadarChart from '../components/SportsRadarChart';
 import SportsScoreTimelineChart from '../components/SportsScoreTimelineChart';
+import { useAgentChat } from '../context/AgentChatContext';
 import './Sports.css';
 
 const activitiesData = [
@@ -19,12 +20,72 @@ const activitiesData = [
 ];
 
 const Sports = () => {
+  const { setChatContext, refreshGlobalUserContext } = useAgentChat();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [hasStrava, setHasStrava] = useState(false);
+  const [agentGreeting, setAgentGreeting] = useState("Analisando seus dados...");
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSport, setSelectedSport] = useState('Todos');
+
+  useEffect(() => {
+    const fetchGreeting = async () => {
+      // Don't fetch for mock data or empty data
+      if (!activities || activities.length === 0 || activities === activitiesData) {
+        setAgentGreeting("Conecte seu Strava e sincronize seus treinos para receber feedbacks personalizados do seu Personal Agent.");
+        return;
+      }
+      
+      try {
+        const lastActivities = activities.slice(0, 4).map(a => `${a.sport} (${a.dist}, effort: ${a.effort})`).join(', ');
+        
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { 
+                role: 'system', 
+                content: `Você é o Personal Agent, um treinador esportivo. O usuário sincronizou estes treinos recentes: ${lastActivities}. Escreva de 1 a 2 frases curtas, super premium e assertivas dando um feedback encorajador e técnico sobre a carga ou sugerindo foco no descanso. Máximo de 25 palavras. Seja direto.` 
+              }
+            ]
+          })
+        });
+
+        const data = await response.json();
+        if (data.choices && data.choices.length > 0) {
+          setAgentGreeting(data.choices[0].message.content);
+        }
+      } catch (err) {
+        console.error("Erro no Personal Agent:", err);
+        setAgentGreeting("Seus treinos estão registrados. Mantenha o foco no descanso e hidratação para evitar fadiga neuromuscular.");
+      }
+    };
+    
+    fetchGreeting();
+  }, [activities]);
+
+  useEffect(() => {
+    if (activities && activities.length > 0) {
+      const serialized = activities.map(a => 
+        `- [${a.date}] ${a.sport}: "${a.title}" | Distância: ${a.dist} | Tempo: ${a.time} | Elevação: ${a.elev} | Esforço: ${a.effort} | Calorias: ${a.calories}`
+      ).join('\n');
+      setChatContext(`Histórico recente de atividades físicas do Strava:\n${serialized}`);
+    } else {
+      setChatContext('Nenhuma atividade física registrada no Strava encontrada.');
+    }
+    
+    refreshGlobalUserContext();
+    
+    return () => {
+      setChatContext('');
+    };
+  }, [activities, setChatContext, refreshGlobalUserContext]);
 
   useEffect(() => {
     const init = async () => {
@@ -98,6 +159,9 @@ const Sports = () => {
               strava_id: stravaId,
               sport: payload.sport || payload.type || 'Workout',
               date: `${weekdayStr.toUpperCase()}, ${dateStr}`,
+              rawDate: event.event_date,
+              rawTime: payload.moving_time || 0,
+              rawDistance: payload.distance || 0,
               title: payload.title || payload.name || 'Atividade',
               time: formatTime(payload.moving_time || 0),
               dist: distKm,
@@ -246,7 +310,7 @@ const Sports = () => {
             agentName="Personal Agent" 
             icon={Dumbbell} 
             agentColor="#fc4c02" 
-            message="Notei que sua carga de treino subiu 20% essa semana comparado à passada. Como está se sentindo? Recomendo focar em descanso e hidratação hoje para evitar fadiga neuromuscular." 
+            message={agentGreeting} 
           />
         </div>
       </section>

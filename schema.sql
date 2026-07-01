@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   avatar_url text,
   birth_date date,
   gender text,
+  garmin_user_id text,
+  garmin_access_token text,
+  garmin_token_secret text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
